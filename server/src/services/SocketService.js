@@ -1,0 +1,299 @@
+import { Server } from 'socket.io';
+import { GameManager } from './GameManager.js';
+
+/**
+ * Service qui gère les communications Socket.io
+ */
+export class SocketService {
+  /**
+   * Crée un nouveau service Socket
+   * @param {http.Server} httpServer - Serveur HTTP pour attacher Socket.io
+   */
+  constructor(httpServer) {
+    this.io = new Server(httpServer, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+      }
+    });
+
+    this.gameManager = new GameManager();
+
+    // Map des utilisateurs connectés (socketId -> userData)
+    this.users = new Map();
+
+    // Démarrer le service
+    this.init();
+  }
+
+  /**
+   * Initialise les écouteurs d'événements Socket.io
+   */
+  init() {
+    this.io.on('connection', (socket) => {
+      console.log(`Nouveau client connecté: ${socket.id}`);
+
+      // Gestion du ping pour tester la connexion
+      socket.on('ping', (timestamp, callback) => {
+        console.log(`Ping reçu de ${socket.id}`);
+        callback({
+          serverTime: Date.now(),
+          clientTime: timestamp,
+          latency: Date.now() - timestamp
+        });
+      });
+
+      // --- Gestion des utilisateurs ---
+
+      // Utilisateur se connecte avec son nom
+      socket.on('user:login', (username, callback) => {
+        try {
+          const userData = { id: socket.id, username, joinedAt: Date.now() };
+          this.users.set(socket.id, userData);
+
+          callback({ success: true, user: userData });
+
+          // Notifier les autres utilisateurs
+          socket.broadcast.emit('user:joined', userData);
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      });
+
+      // --- Gestion des parties ---
+
+      // Créer une nouvelle partie
+      socket.on('game:create', (roomName, callback) => {
+        try {
+          const user = this.users.get(socket.id);
+
+          if (!user) {
+            throw new Error('Vous devez être connecté');
+          }
+
+          // Valider le nom de la salle
+          if (!roomName || typeof roomName !== 'string' || roomName.trim() === '') {
+            throw new Error('Le nom de la salle est invalide');
+          }
+
+          // Nettoyer le nom de la salle (enlever espaces, caractères spéciaux, etc.)
+          const cleanRoomName = roomName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+
+          const game = this.gameManager.createGame(socket.id, user.username, cleanRoomName);
+
+          // Rejoindre la room Socket.io pour cette partie
+          socket.join(game.id);
+
+          callback({ success: true, game: game.getState() });
+
+          // Notifier les autres utilisateurs de la nouvelle partie disponible
+          this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      });
+
+      // Rejoindre une partie existante
+      socket.on('game:join', (gameIdOrRoomName, callback) => {
+        try {
+          const user = this.users.get(socket.id);
+
+          if (!user) {
+            throw new Error('Vous devez être connecté');
+          }
+
+          const game = this.gameManager.joinGame(gameIdOrRoomName, socket.id, user.username);
+
+          // Rejoindre la room Socket.io pour cette partie
+          socket.join(game.id);
+
+          callback({ success: true, game: game.getState() });
+
+          // Notifier les autres joueurs dans cette partie
+          socket.to(game.id).emit('game:player_joined', {
+            gameId: game.id,
+            roomName: game.roomName,
+            player: {
+              id: user.id,
+              username: user.username
+            }
+          });
+
+          // Notifier tous les utilisateurs de la mise à jour des parties disponibles
+          this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      });
+
+      // Quitter une partie
+      socket.on('game:leave', (callback) => {
+        try {
+          const game = this.gameManager.getPlayerGame(socket.id);
+
+          if (!game) {
+            throw new Error('Vous n\'êtes pas dans une partie');
+          }
+
+          const gameId = game.id;
+          this.gameManager.leaveGame(socket.id);
+
+          // Quitter la room Socket.io
+          socket.leave(gameId);
+
+          callback({ success: true });
+
+          // Récupérer le jeu mis à jour
+          const updatedGame = this.gameManager.getGame(gameId);
+
+          if (updatedGame) {
+            // Notifier les autres joueurs dans cette partie du joueur qui part
+            this.io.to(gameId).emit('game:player_left', {
+              gameId,
+              playerId: socket.id,
+              newHost: updatedGame.host // Envoyer le nouvel hôte
+            });
+
+            // Envoyer l'état complet du jeu mis à jour (incluant le nouvel hôte)
+            this.io.to(gameId).emit('game:state_updated', updatedGame.getState());
+          }
+
+          // Notifier tous les utilisateurs de la mise à jour des parties disponibles
+          this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      });
+
+      // Démarrer une partie
+      socket.on('game:start', (callback) => {
+        try {
+          const game = this.gameManager.getPlayerGame(socket.id);
+
+          if (!game) {
+            throw new Error('Vous n\'êtes pas dans une partie');
+          }
+
+          this.gameManager.startGame(game.id, socket.id);
+
+          callback({ success: true });
+
+          // Notifier tous les joueurs dans cette partie
+          this.io.to(game.id).emit('game:started', {
+            gameId: game.id,
+            startedAt: game.startedAt
+          });
+
+          // Notifier tous les utilisateurs de la mise à jour des parties disponibles
+          this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      });
+
+      // Lister les parties disponibles
+      socket.on('game:list', (callback) => {
+        try {
+          const games = this.gameManager.getAvailableGames();
+          callback({ success: true, games });
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      });
+
+      // --- Actions de jeu ---
+
+      // Déplacer la pièce
+      socket.on('game:move', (direction, callback) => {
+        try {
+          const game = this.gameManager.getPlayerGame(socket.id);
+
+          if (!game || !game.isActive) {
+            throw new Error('Partie non active');
+          }
+
+          const player = game.players.get(socket.id);
+
+          if (!player || player.gameOver) {
+            throw new Error('Vous ne pouvez pas jouer');
+          }
+
+          let result = false;
+
+          switch (direction) {
+            case 'left':
+              result = game.movePiece(player, -1, 0);
+              break;
+            case 'right':
+              result = game.movePiece(player, 1, 0);
+              break;
+            case 'down':
+              result = game.movePiece(player, 0, 1);
+              break;
+            case 'drop':
+              result = game.dropPiece(player) > 0;
+              break;
+            case 'rotate':
+              result = game.rotatePiece(player);
+              break;
+            default:
+              throw new Error('Direction invalide');
+          }
+
+          callback({ success: true, result });
+
+          // Envoyer la mise à jour de l'état du joueur à tous les joueurs dans la partie
+          this.io.to(game.id).emit('game:player_updated', {
+            gameId: game.id,
+            player: player.getState()
+          });
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      });
+
+      // --- Gestion de la déconnexion ---
+
+      socket.on('disconnect', () => {
+        console.log(`Client déconnecté: ${socket.id}`);
+
+        // Supprimer l'utilisateur de sa partie si nécessaire
+        const game = this.gameManager.getPlayerGame(socket.id);
+
+        if (game) {
+          const gameId = game.id;
+          this.gameManager.leaveGame(socket.id);
+
+          // Récupérer le jeu mis à jour
+          const updatedGame = this.gameManager.getGame(gameId);
+
+          if (updatedGame) {
+            // Notifier les autres joueurs dans cette partie
+            this.io.to(gameId).emit('game:player_left', {
+              gameId,
+              playerId: socket.id,
+              newHost: updatedGame.host // Envoyer le nouvel hôte
+            });
+
+            // Envoyer l'état complet du jeu mis à jour (incluant le nouvel hôte)
+            this.io.to(gameId).emit('game:state_updated', updatedGame.getState());
+          }
+
+          // Notifier tous les utilisateurs de la mise à jour des parties disponibles
+          this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
+        }
+
+        // Supprimer l'utilisateur de la liste des utilisateurs connectés
+        this.users.delete(socket.id);
+
+        // Notifier les autres utilisateurs
+        this.io.emit('user:left', { id: socket.id });
+      });
+    });
+
+    // Démarrer le nettoyage périodique des parties
+    setInterval(() => {
+      this.gameManager.cleanupGames();
+    }, 10 * 60 * 1000); // Toutes les 10 minutes
+  }
+}
