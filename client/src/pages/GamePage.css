@@ -1,0 +1,160 @@
+/* Styles pour la page de jeu */
+.game-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+  background-color: #121212;
+  color: #ecf0f1;
+  min-height: 100vh;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #2c3e50;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.game-title {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #e74c3c;
+  margin: 0;
+}
+
+.game-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.room-name {
+  font-size: 1.2rem;
+  margin: 0 0 10px;
+}
+
+.players-info {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.player-badge {
+  padding: 5px 10px;
+  background-color: #2c3e50;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+.game-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.waiting-room {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  gap: 20px;
+}
+
+.waiting-title {
+  font-size: 1.5rem;
+  color: #e67e22;
+}
+
+.game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.main-grid-container {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+}
+
+.game-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Messages de fin de jeu */
+.game-over-message {
+  background-color: rgba(192, 57, 43, 0.9);
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  animation: pulse 1s infinite alternate;
+}
+
+.winner-message {
+  background-color: rgba(39, 174, 96, 0.9);
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.8; }
+  to { opacity: 1; }
+}
+
+/* Aide aux contrôles */
+.controls-help {
+  background-color: #2c3e50;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.controls-help p {
+  font-weight: bold;
+  margin: 0 0 8px 0;
+  color: #e74c3c;
+}
+
+.controls-help ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.controls-help li {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .game-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .main-grid-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .players-info {
+    justify-content: center;
+  }
+}

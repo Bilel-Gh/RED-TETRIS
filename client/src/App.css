@@ -13,3 +13,29 @@
   opacity: 0;
   transition: opacity 300ms;
 }
+
+/* Loading indicator */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #121212;
+  color: #ecf0f1;
+}
+
+.loading-container::after {
+  content: '';
+  width: 60px;
+  height: 60px;
+  border: 6px solid #e74c3c;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-top: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

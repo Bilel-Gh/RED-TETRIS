@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import PageTransition from '../components/PageTransition';
 
 const LobbyPage = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { getGames, createGame, joinGame, gamesList } = useGame();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -71,15 +71,26 @@ const LobbyPage = () => {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    // Rediriger vers la page de connexion
+    navigate('/');
+  };
+
   return (
     <PageTransition>
       <div className="lobby-page">
         <div className="lobby-container">
           <div className="lobby-header">
             <h1 className="lobby-title">Lobby</h1>
-            <p className="lobby-welcome">
-              Bienvenue, <span className="username">{user?.username}</span>
-            </p>
+            <div className="user-section">
+              <p className="lobby-welcome">
+                Bienvenue, <span className="username">{user?.username}</span>
+              </p>
+              <button onClick={handleLogout} className="logout-button">
+                Déconnexion
+              </button>
+            </div>
           </div>
 
           <div className="create-game-card">

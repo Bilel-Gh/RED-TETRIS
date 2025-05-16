@@ -16,3 +16,30 @@ html, body, #root {
   flex-direction: column;
   min-height: 100vh;
 }
+
+/* User section styling */
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Logout button */
+.logout-button {
+  padding: 8px 16px;
+  background-color: #c0392b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.logout-button:hover {
+  background-color: #e74c3c;
+}
+
+.logout-button:active {
+  transform: scale(0.98);
+}

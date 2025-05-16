@@ -1,4 +1,5 @@
 import React from 'react';
+import './Tetris.css';
 
 // Couleurs des pièces Tetris (sans Tailwind)
 const COLORS = {
@@ -51,16 +52,26 @@ const SHAPES = {
   ]
 };
 
-const NextPiece = ({ pieceType }) => {
-  if (!pieceType || !SHAPES[pieceType]) {
-    return null;
+const NextPiece = ({ type }) => {
+  if (!type || !SHAPES[type]) {
+    return (
+      <div className="next-piece-container">
+        <h3>Prochaine pièce</h3>
+        <div className="next-piece-wrapper">
+          <div className="next-piece-empty">
+            Chargement...
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const shape = SHAPES[pieceType];
-  const color = COLORS[pieceType];
+  const shape = SHAPES[type];
+  const color = COLORS[type];
 
   return (
     <div className="next-piece-container">
+      <h3>Prochaine pièce</h3>
       <div className="next-piece-wrapper">
         <div>
           {shape.map((row, rowIndex) => (
@@ -69,8 +80,6 @@ const NextPiece = ({ pieceType }) => {
                 <div
                   key={`cell-${rowIndex}-${colIndex}`}
                   className={`next-piece-cell ${cell ? color : 'next-cell-empty'}`}
-                  data-row={rowIndex}
-                  data-col={colIndex}
                 />
               ))}
             </div>

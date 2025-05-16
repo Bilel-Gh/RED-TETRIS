@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
@@ -7,11 +7,13 @@ import NextPiece from '../components/NextPiece';
 import OpponentGrid from '../components/OpponentGrid';
 import ShareGame from '../components/ShareGame';
 import PageTransition from '../components/PageTransition';
+import '../components/Tetris.css';
+import './GamePage.css';
 
 const GamePage = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const {
     currentGame,
     gameState,
@@ -25,9 +27,26 @@ const GamePage = () => {
     drop
   } = useGame();
 
+  const [keyEnabled, setKeyEnabled] = useState(true);
+
   // Gestionnaire d'événements clavier
   const handleKeyDown = useCallback((e) => {
-    if (!gameState || !gameState.isActive) return;
+    // Ignorer si la saisie est faite dans un input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      return;
+    }
+
+    // Vérifier si le jeu est actif
+    if (!gameState || !gameState.isActive || !keyEnabled) return;
+
+    // Empêcher les actions par défaut pour les touches du jeu
+    if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' '].includes(e.key)) {
+      e.preventDefault();
+    }
+
+    // Limiter l'appui de touche répétitif
+    setKeyEnabled(false);
+    setTimeout(() => setKeyEnabled(true), 50);
 
     switch (e.key) {
       case 'ArrowLeft':
@@ -48,7 +67,7 @@ const GamePage = () => {
       default:
         break;
     }
-  }, [gameState, moveLeft, moveRight, moveDown, rotate, drop]);
+  }, [gameState, moveLeft, moveRight, moveDown, rotate, drop, keyEnabled]);
 
   // Attacher/détacher les écouteurs d'événements clavier
   useEffect(() => {
@@ -64,10 +83,28 @@ const GamePage = () => {
     navigate('/lobby');
   };
 
+  // Gérer la déconnexion
+  const handleLogout = async () => {
+    await handleLeaveGame(); // Quitter d'abord la partie
+    logout();
+    navigate('/');
+  };
+
   // Gérer le démarrage du jeu
   const handleStart = async () => {
-    await startGame();
+    const result = await startGame();
+    if (!result.success) {
+      console.error('Erreur lors du démarrage du jeu:', result.error);
+    }
   };
+
+  // Détecter si le joueur actuel est éliminé
+  const isCurrentPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
+
+  // Déterminer le nombre de joueurs encore en jeu
+  const activePlayers = gameState?.playerStates ?
+    Object.values(gameState.playerStates).filter(p => !p.gameOver).length :
+    0;
 
   // Générer l'URL de partage avec le nouveau format
   const generateShareUrl = () => {
@@ -77,6 +114,13 @@ const GamePage = () => {
     // Construire l'URL avec le format demandé room/player_name
     return `${window.location.origin}/${roomName}/${encodeURIComponent(user.username)}`;
   };
+
+  // Pour le débogage de l'état du jeu
+  useEffect(() => {
+    if (gameState) {
+      console.log('État actuel du jeu:', gameState);
+    }
+  }, [gameState]);
 
   return (
     <PageTransition>
@@ -105,6 +149,9 @@ const GamePage = () => {
             )}
             <button onClick={handleLeave} className="leave-button">
               Quitter la partie
+            </button>
+            <button onClick={handleLogout} className="logout-button">
+              Déconnexion
             </button>
           </div>
         </div>
@@ -138,6 +185,28 @@ const GamePage = () => {
                     <span className="stat-label">Lignes</span>
                     <span className="stat-value">{gameState.lines || 0}</span>
                   </div>
+                </div>
+
+                {isCurrentPlayerGameOver && (
+                  <div className="game-over-message">
+                    Game Over!
+                  </div>
+                )}
+
+                {activePlayers === 1 && !isCurrentPlayerGameOver && (
+                  <div className="winner-message">
+                    Vous êtes le dernier survivant!
+                  </div>
+                )}
+
+                <div className="controls-help">
+                  <p>Contrôles:</p>
+                  <ul>
+                    <li>← → : Déplacer</li>
+                    <li>↑ : Tourner</li>
+                    <li>↓ : Accélérer</li>
+                    <li>Espace : Drop</li>
+                  </ul>
                 </div>
               </div>
             </div>

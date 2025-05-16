@@ -7,10 +7,56 @@ import LoginPage from './pages/LoginPage';
 import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
 import GameOverPage from './pages/GameOverPage';
+import './App.css';
+import './components/Tetris.css';
+import socketService from './services/socketService';
+
+// Composant de détection de la connexion réseau
+const ConnectionMonitor = () => {
+  // Vérifier et gérer l'état de la connexion réseau
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Réseau en ligne, tentative de reconnexion...');
+      socketService.scheduleReconnection();
+    };
+
+    const handleOffline = () => {
+      console.log('Réseau hors ligne, attente de reconnexion...');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  return null; // Ce composant ne rend rien visuellement
+};
 
 // Composant pour protéger les routes qui nécessitent une authentification
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useSelector(state => state.auth);
+  const { isAuthenticated, user, status } = useSelector(state => state.auth);
+  const { login } = useAuth();
+
+  useEffect(() => {
+    // Si le socket est déconnecté mais que l'utilisateur est considéré comme authentifié,
+    // tenter une reconnexion automatique
+    const socket = socketService;
+    if (isAuthenticated && user && user.username && !socket.isAuth) {
+      console.log('ProtectedRoute: tentative de reconnexion automatique pour', user.username);
+      login(user.username).catch(err => {
+        console.error('ProtectedRoute: échec de la reconnexion automatique', err);
+      });
+    }
+  }, [isAuthenticated, user, login]);
+
+  // Montrer un état de chargement pendant la tentative de reconnexion
+  if (status === 'loading') {
+    return <div className="loading-container">Connexion en cours...</div>;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -55,12 +101,49 @@ const GameRouteHandler = () => {
   }
 
   // Pendant le chargement
-  return <div>Chargement...</div>;
+  return <div className="loading-container">Chargement de la partie...</div>;
 };
 
 function App() {
+  const { isAuthenticated, user } = useSelector(state => state.auth);
+  const { login } = useAuth();
+
+  // Vérifier l'état de connexion au chargement de l'application
+  useEffect(() => {
+    // Vérifier si on a des données d'authentification dans localStorage
+    const savedAuth = localStorage.getItem('redTetrisAuth');
+    if (savedAuth && !isAuthenticated) {
+      try {
+        const authData = JSON.parse(savedAuth);
+        if (authData && authData.username) {
+          console.log('Tentative de reconnexion depuis localStorage:', authData.username);
+          login(authData.username).catch(err => {
+            console.error('Échec de la reconnexion depuis localStorage:', err);
+            localStorage.removeItem('redTetrisAuth');
+          });
+        }
+      } catch (e) {
+        console.error('Erreur lors de la lecture des données d\'authentification:', e);
+        localStorage.removeItem('redTetrisAuth');
+      }
+    }
+  }, [isAuthenticated, login]);
+
+  // Sauvegarder les données d'authentification quand l'utilisateur se connecte
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      localStorage.setItem('redTetrisAuth', JSON.stringify({
+        username: user.username,
+        timestamp: Date.now()
+      }));
+    }
+  }, [isAuthenticated, user]);
+
   return (
     <Router>
+      {/* Composant de surveillance de la connexion réseau */}
+      <ConnectionMonitor />
+
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route

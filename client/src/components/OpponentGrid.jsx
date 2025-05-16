@@ -1,4 +1,5 @@
 import React from 'react';
+import './Tetris.css';
 
 // Version simplifiée des couleurs pour les grilles des adversaires
 const COLORS = {
@@ -12,29 +13,34 @@ const COLORS = {
   '0': 'opponent-cell-empty', // Cellule vide
 };
 
-const OpponentGrid = ({ grid, username, score }) => {
-  if (!grid) return null;
+const OpponentGrid = ({ username, grid, score, gameOver }) => {
+  // Si la grille n'est pas définie, afficher une grille vide
+  const displayGrid = grid || Array(20).fill().map(() => Array(10).fill('0'));
+
+  // Fonction pour déterminer la classe de la cellule
+  const getCellClass = (cell) => {
+    if (cell === '0') return 'cell-empty';
+    if (cell === 'X') return 'cell-indestructible';
+    return 'cell-filled'; // Pour simplifier, toutes les pièces ont la même couleur pour l'adversaire
+  };
 
   return (
-    <div className="opponent-container">
-      <div className="opponent-header">
-        <span className="opponent-name">{username}</span>
-        <span className="opponent-score">{score || 0} pts</span>
-      </div>
+    <div className="opponent-grid-container">
+      <div className="opponent-name">{username || 'Adversaire'}</div>
       <div className="opponent-grid">
-        {grid.slice(0, 15).map((row, rowIndex) => (
-          <div key={`row-${rowIndex}`} className="opponent-grid-row">
+        {displayGrid.map((row, rowIndex) => (
+          <div key={`row-${rowIndex}`} className="opponent-row">
             {row.map((cell, colIndex) => (
               <div
                 key={`cell-${rowIndex}-${colIndex}`}
-                className={`opponent-grid-cell ${COLORS[cell] || COLORS['0']}`}
-                data-row={rowIndex}
-                data-col={colIndex}
+                className={`opponent-cell ${getCellClass(cell)}`}
               />
             ))}
           </div>
         ))}
+        {gameOver && <div className="opponent-gameover">Game Over</div>}
       </div>
+      <div className="opponent-grid-score">Score: {score || 0}</div>
     </div>
   );
 };
