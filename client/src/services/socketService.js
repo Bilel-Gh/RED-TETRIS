@@ -412,25 +412,43 @@ const movePiece = async (direction) => {
   try {
     await ensureConnection();
 
+    if (!socket.auth) {
+      console.error("Le joueur n'est pas connecté");
+      return { success: false, error: "Vous devez être connecté" };
+    }
+
     console.log(`Déplacement de la pièce: ${direction}`);
-    return new Promise((resolve, reject) => {
+
+    // Traitement local immédiat pour un retour plus réactif
+    let didMove = false;
+
+    return new Promise((resolve) => {
+      // Définir un timeout court pour éviter de bloquer l'interface
       const timeout = setTimeout(() => {
-        reject(new Error('Délai de déplacement dépassé'));
-      }, 2000);
+        // Résoudre avec une réponse locale si le serveur ne répond pas assez vite
+        console.warn('Le serveur ne répond pas assez vite, utilisation du retour local');
+        resolve({
+          success: true,
+          result: { moved: didMove },
+          warning: 'Réponse locale - le serveur ne répond pas assez vite'
+        });
+      }, 100); // Timeout plus court pour une meilleure réactivité
 
       socket.emit('game:move', direction, (response) => {
         clearTimeout(timeout);
 
         if (response && response.success) {
+          didMove = true; // Marquer que le mouvement a été effectué
           resolve({ success: true, result: response.result });
         } else {
           console.error('Erreur lors du déplacement:', response?.error || 'Pas de réponse');
-          reject({ success: false, error: response?.error || 'Erreur inconnue' });
+          resolve({ success: false, error: response?.error || 'Erreur inconnue' });
         }
       });
     });
   } catch (error) {
-    return Promise.reject({ success: false, error: error.message || 'Erreur de connexion' });
+    console.error('Exception lors du déplacement:', error);
+    return Promise.resolve({ success: false, error: error.message || 'Erreur de connexion' });
   }
 };
 

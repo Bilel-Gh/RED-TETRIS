@@ -16,6 +16,7 @@
   flex-direction: column;
   border: 3px solid #34495e;
   background-color: #1a202c;
+  position: relative;
 }
 
 .grid-row {
@@ -27,6 +28,27 @@
   height: 25px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-sizing: border-box;
+  transition: background-color 0.05s ease, transform 0.05s ease;
+}
+
+/* Animation pour les cellules actives */
+.active-cell {
+  animation: cellPulse 0.5s infinite alternate;
+}
+
+@keyframes cellPulse {
+  from { opacity: 0.9; }
+  to { opacity: 1; box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.3); }
+}
+
+/* Animation pour les lignes complétées */
+.row-complete {
+  animation: rowFlash 0.3s ease;
+}
+
+@keyframes rowFlash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; background-color: white; }
 }
 
 /* Cellule vide */
@@ -85,36 +107,36 @@
 
 /* Ligne indestructible */
 .cell-indestructible {
-  background-color: #7f8c8d;
-  border: 1px solid rgba(127, 140, 141, 0.7);
-  box-shadow: inset 0 0 8px rgba(127, 140, 141, 0.5);
-  background-image: repeating-linear-gradient(45deg,
-                    rgba(0, 0, 0, 0.2),
-                    rgba(0, 0, 0, 0.2) 5px,
-                    rgba(0, 0, 0, 0.3) 5px,
-                    rgba(0, 0, 0, 0.3) 10px);
-}
-
-/* Pour les cellules des adversaires */
-.cell-filled {
-  background-color: #3498db;
-  border: 1px solid rgba(52, 152, 219, 0.7);
-  box-shadow: inset 0 0 8px rgba(52, 152, 219, 0.5);
+  background-color: #718096;
+  border: 1px solid #4a5568;
+  box-shadow: inset 0 0 8px rgba(113, 128, 150, 0.5);
 }
 
 /* Styles pour la prochaine pièce */
 .next-piece-container {
-  margin-top: 20px;
-  padding: 15px;
   background-color: #2c3e50;
+  padding: 15px;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.next-piece-container h3 {
+  margin: 0 0 15px;
+  font-size: 1.1rem;
+  color: #ecf0f1;
+  text-align: center;
 }
 
 .next-piece-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 10px;
+  background-color: #1a202c;
+  border: 2px solid #34495e;
 }
 
 .next-piece-row {
@@ -122,16 +144,22 @@
 }
 
 .next-piece-cell {
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-sizing: border-box;
 }
 
 .next-cell-empty {
-  background-color: transparent;
+  background-color: #1a202c;
 }
 
+.next-piece-empty {
+  color: #a0aec0;
+  font-size: 0.8rem;
+  padding: 10px;
+}
+
+/* Couleurs pour les prochaines pièces */
 .next-cell-i { background-color: #00f0f0; }
 .next-cell-o { background-color: #f0f000; }
 .next-cell-t { background-color: #a000f0; }
@@ -139,6 +167,112 @@
 .next-cell-z { background-color: #f00000; }
 .next-cell-j { background-color: #0000f0; }
 .next-cell-l { background-color: #f0a000; }
+
+/* Styles pour l'aperçu des grilles des adversaires */
+.opponent-grid-container {
+  background-color: #2c3e50;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 150px;
+}
+
+.opponent-name {
+  font-size: 0.9rem;
+  color: #ecf0f1;
+  margin-bottom: 5px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.opponent-grid {
+  display: flex;
+  flex-direction: column;
+  background-color: #1a202c;
+  border: 1px solid #34495e;
+  position: relative;
+}
+
+.opponent-row {
+  display: flex;
+}
+
+.opponent-cell {
+  width: 8px;
+  height: 8px;
+}
+
+.opponent-cell.cell-empty {
+  background-color: #1a202c;
+}
+
+.opponent-cell.cell-filled {
+  background-color: #718096;
+}
+
+.opponent-grid-score {
+  font-size: 0.8rem;
+  color: #ecf0f1;
+  margin-top: 5px;
+  text-align: center;
+}
+
+.opponent-gameover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(192, 57, 43, 0.8);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .game-area {
+    flex-direction: column;
+  }
+
+  .main-grid-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .grid-cell {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Animations pour la chute des pièces */
+@keyframes fallDown {
+  from { transform: translateY(-20px); opacity: 0.5; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.falling-piece {
+  animation: fallDown 0.2s ease-in-out;
+}
+
+/* Animation pour la disparition des lignes complètes */
+@keyframes lineClear {
+  0% { transform: scaleY(1); }
+  50% { transform: scaleY(0.1); background-color: white; }
+  100% { transform: scaleY(0); opacity: 0; }
+}
+
+.clearing-line {
+  animation: lineClear 0.3s forwards;
+}
 
 /* Styles pour la zone de jeu */
 .game-area {
@@ -196,69 +330,6 @@
   margin-top: 20px;
 }
 
-.opponent-grid-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 150px;
-  position: relative;
-}
-
-.opponent-name {
-  font-size: 14px;
-  margin-bottom: 5px;
-  color: #ecf0f1;
-}
-
-.opponent-grid {
-  display: flex;
-  flex-direction: column;
-  border: 2px solid #34495e;
-  background-color: #1a202c;
-}
-
-.opponent-row {
-  display: flex;
-}
-
-.opponent-cell {
-  width: 12px;
-  height: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-sizing: border-box;
-}
-
-.opponent-grid-score {
-  margin-top: 5px;
-  font-size: 12px;
-  color: #ecf0f1;
-}
-
-.opponent-gameover {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(192, 57, 43, 0.8);
-  color: white;
-  padding: 5px 10px;
-  font-size: 12px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
-/* Animations */
-@keyframes flash {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-.line-clear {
-  animation: flash 0.2s 3;
-  background-color: white !important;
-}
-
 /* Styles pour les contrôles et boutons */
 .game-controls {
   display: flex;
@@ -291,21 +362,4 @@
 
 .leave-button:hover {
   background-color: #c0392b;
-}
-
-/* Responsive styles */
-@media (max-width: 768px) {
-  .game-area {
-    flex-direction: column;
-  }
-
-  .main-grid-container {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .grid-cell {
-    width: 20px;
-    height: 20px;
-  }
 }

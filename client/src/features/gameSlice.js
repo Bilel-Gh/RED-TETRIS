@@ -78,16 +78,31 @@ export const gameSlice = createSlice({
 
         // Si c'est le joueur courant, mettre à jour également les propriétés principales
         if (action.payload.player.isCurrentPlayer) {
-          state.gameState.grid = action.payload.player.grid;
-          state.gameState.currentPiece = action.payload.player.currentPiece;
-          state.gameState.nextPiece = action.payload.player.nextPiece;
-          state.gameState.score = action.payload.player.score;
-          state.gameState.level = action.payload.player.level;
-          state.gameState.lines = action.payload.player.lines;
+          // Mise à jour directe de l'état principal du jeu actif
+          Object.assign(state.gameState, {
+            grid: action.payload.player.grid || state.gameState.grid,
+            currentPiece: action.payload.player.currentPiece,
+            nextPiece: action.payload.player.nextPiece,
+            score: action.payload.player.score,
+            level: action.payload.player.level,
+            lines: action.payload.player.lines
+          });
+
+          // Afficher les informations de débogage pour les pièces
+          if (action.payload.player.currentPiece) {
+            console.log('Pièce courante actualisée:', action.payload.player.currentPiece);
+          }
+
+          if (action.payload.player.nextPiece) {
+            console.log('Prochaine pièce actualisée:', action.payload.player.nextPiece);
+          }
         }
       } else {
         // Mise à jour directe de l'état complet du jeu
         state.gameState = action.payload;
+
+        // Afficher les informations de débogage pour l'état du jeu
+        console.log('État complet du jeu mis à jour:', state.gameState);
       }
     },
     updatePlayers: (state, action) => {
@@ -114,7 +129,16 @@ export const gameSlice = createSlice({
 
       // Initialiser l'état du jeu si des données sont fournies
       if (action.payload.initialState) {
+        console.log('Initialisation du jeu avec état initial:', action.payload.initialState);
         state.gameState = action.payload.initialState;
+
+        // S'assurer que l'état du jeu contient toutes les propriétés nécessaires
+        if (!state.gameState.playerStates) {
+          state.gameState.playerStates = {};
+        }
+
+        // Marquer le jeu comme actif
+        state.gameState.isActive = true;
       } else {
         // Initialiser un état de jeu par défaut si nécessaire
         state.gameState = {
@@ -122,7 +146,8 @@ export const gameSlice = createSlice({
           grid: Array(20).fill().map(() => Array(10).fill("0")),
           score: 0,
           level: 1,
-          lines: 0
+          lines: 0,
+          playerStates: {}
         };
       }
     },

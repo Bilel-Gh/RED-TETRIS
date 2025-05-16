@@ -1,0 +1,206 @@
+/* Styles pour la page de fin de partie */
+.gameover-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: #121212;
+  color: #ecf0f1;
+}
+
+.gameover-container {
+  max-width: 800px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.gameover-header {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.gameover-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #e74c3c;
+  margin: 0 0 10px;
+}
+
+.gameover-subtitle {
+  font-size: 1.2rem;
+  color: #bdc3c7;
+  margin: 0;
+}
+
+/* Résultats */
+.results-container {
+  background-color: #1e1e1e;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+.results-title {
+  font-size: 1.8rem;
+  color: #e67e22;
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.player-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.player-result {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #2c3e50;
+  position: relative;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.player-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background-color: #34495e;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.player-name {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.player-level {
+  font-size: 0.9rem;
+  color: #bdc3c7;
+}
+
+.player-score {
+  font-size: 1.3rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.winner-crown {
+  font-size: 1.5rem;
+}
+
+/* Styles spécifiques pour les positions */
+.first-place {
+  background-color: rgba(241, 196, 15, 0.2);
+  border: 2px solid #f1c40f;
+}
+
+.first-place .player-rank {
+  background-color: #f1c40f;
+  color: #000;
+}
+
+.second-place {
+  background-color: rgba(189, 195, 199, 0.2);
+  border: 2px solid #bdc3c7;
+}
+
+.second-place .player-rank {
+  background-color: #bdc3c7;
+  color: #000;
+}
+
+.other-place {
+  background-color: rgba(211, 84, 0, 0.2);
+  border: 2px solid #d35400;
+}
+
+.other-place .player-rank {
+  background-color: #d35400;
+}
+
+/* Boutons d'action */
+.gameover-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.back-to-lobby-button {
+  padding: 12px 25px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.back-to-lobby-button:hover {
+  background-color: #2980b9;
+}
+
+/* Message quand aucun résultat n'est disponible */
+.no-results {
+  text-align: center;
+  background-color: #1e1e1e;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+.no-results-text {
+  font-size: 1.2rem;
+  color: #e67e22;
+  margin: 0 0 20px;
+}
+
+/* Animation pour la page */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gameover-container {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .gameover-title {
+    font-size: 2rem;
+  }
+
+  .player-result {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .player-info {
+    flex-direction: column;
+  }
+
+  .player-rank {
+    margin: 0 auto 10px;
+  }
+}

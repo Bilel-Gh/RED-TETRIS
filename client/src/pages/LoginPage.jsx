@@ -1,6 +1,7 @@
 import React from 'react';
 import LoginScreen from '../components/LoginScreen';
 import PageTransition from '../components/PageTransition';
+import './LoginPage.css';
 
 const LoginPage = () => {
   return (

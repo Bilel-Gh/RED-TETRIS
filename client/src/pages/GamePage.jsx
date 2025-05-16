@@ -28,6 +28,8 @@ const GamePage = () => {
   } = useGame();
 
   const [keyEnabled, setKeyEnabled] = useState(true);
+  const [lastMoveTime, setLastMoveTime] = useState(Date.now());
+  const [actionFeedback, setActionFeedback] = useState(null);
 
   // Gestionnaire d'événements clavier
   const handleKeyDown = useCallback((e) => {
@@ -44,30 +46,68 @@ const GamePage = () => {
       e.preventDefault();
     }
 
-    // Limiter l'appui de touche répétitif
-    setKeyEnabled(false);
-    setTimeout(() => setKeyEnabled(true), 50);
+    // Contrôle du débit des touches (throttling)
+    const now = Date.now();
+    const minDelay = e.key === 'ArrowDown' ? 50 : 100; // Descente plus rapide
+    if (now - lastMoveTime < minDelay) {
+      return;
+    }
 
+    setLastMoveTime(now);
+    setKeyEnabled(false);
+
+    let actionPerformed = "";
+
+    // Gérer les différentes touches
     switch (e.key) {
       case 'ArrowLeft':
-        moveLeft();
+        moveLeft().then(response => {
+          if (response && response.success) {
+            actionPerformed = "Gauche";
+          }
+        });
         break;
       case 'ArrowRight':
-        moveRight();
+        moveRight().then(response => {
+          if (response && response.success) {
+            actionPerformed = "Droite";
+          }
+        });
         break;
       case 'ArrowDown':
-        moveDown();
+        moveDown().then(response => {
+          if (response && response.success) {
+            actionPerformed = "Bas";
+          }
+        });
         break;
       case 'ArrowUp':
-        rotate();
+        rotate().then(response => {
+          if (response && response.success) {
+            actionPerformed = "Rotation";
+          }
+        });
         break;
       case ' ': // Espace
-        drop();
+        drop().then(response => {
+          if (response && response.success) {
+            actionPerformed = "Chute";
+          }
+        });
         break;
       default:
         break;
     }
-  }, [gameState, moveLeft, moveRight, moveDown, rotate, drop, keyEnabled]);
+
+    // Afficher un retour visuel de l'action
+    if (actionPerformed) {
+      setActionFeedback(actionPerformed);
+      setTimeout(() => setActionFeedback(null), 300);
+    }
+
+    // Réactiver les touches après un court délai
+    setTimeout(() => setKeyEnabled(true), 50);
+  }, [gameState, moveLeft, moveRight, moveDown, rotate, drop, keyEnabled, lastMoveTime]);
 
   // Attacher/détacher les écouteurs d'événements clavier
   useEffect(() => {
@@ -187,6 +227,11 @@ const GamePage = () => {
                   </div>
                 </div>
 
+                {/* Retour visuel des actions */}
+                {actionFeedback && (
+                  <div className="action-feedback">{actionFeedback}</div>
+                )}
+
                 {isCurrentPlayerGameOver && (
                   <div className="game-over-message">
                     Game Over!
@@ -198,6 +243,45 @@ const GamePage = () => {
                     Vous êtes le dernier survivant!
                   </div>
                 )}
+
+                {/* Contrôles à l'écran pour mobiles */}
+                <div className="mobile-controls">
+                  <button
+                    className="control-btn"
+                    onTouchStart={() => moveLeft()}
+                    aria-label="Gauche"
+                  >
+                    ←
+                  </button>
+                  <button
+                    className="control-btn"
+                    onTouchStart={() => rotate()}
+                    aria-label="Rotation"
+                  >
+                    ↻
+                  </button>
+                  <button
+                    className="control-btn"
+                    onTouchStart={() => moveRight()}
+                    aria-label="Droite"
+                  >
+                    →
+                  </button>
+                  <button
+                    className="control-btn"
+                    onTouchStart={() => moveDown()}
+                    aria-label="Bas"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    className="control-btn drop-btn"
+                    onTouchStart={() => drop()}
+                    aria-label="Chute instantanée"
+                  >
+                    ⤓
+                  </button>
+                </div>
 
                 <div className="controls-help">
                   <p>Contrôles:</p>

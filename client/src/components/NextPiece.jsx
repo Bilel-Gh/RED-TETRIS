@@ -53,7 +53,17 @@ const SHAPES = {
 };
 
 const NextPiece = ({ type }) => {
-  if (!type || !SHAPES[type]) {
+  console.log('NextPiece - type reçu:', type);
+
+  // Gestion du cas où type est un objet complet au lieu d'une simple chaîne
+  let pieceType = type;
+  if (type && typeof type === 'object' && type.type) {
+    pieceType = type.type;
+  }
+
+  // Vérifier si le type est une chaîne valide
+  if (!pieceType || typeof pieceType !== 'string' || !SHAPES[pieceType]) {
+    console.log('Type de pièce invalide ou non défini:', pieceType);
     return (
       <div className="next-piece-container">
         <h3>Prochaine pièce</h3>
@@ -66,8 +76,10 @@ const NextPiece = ({ type }) => {
     );
   }
 
-  const shape = SHAPES[type];
-  const color = COLORS[type];
+  const shape = SHAPES[pieceType];
+  const color = COLORS[pieceType];
+
+  console.log('NextPiece - affichage de la pièce:', pieceType);
 
   return (
     <div className="next-piece-container">
@@ -80,6 +92,7 @@ const NextPiece = ({ type }) => {
                 <div
                   key={`cell-${rowIndex}-${colIndex}`}
                   className={`next-piece-cell ${cell ? color : 'next-cell-empty'}`}
+                  data-type={pieceType}
                 />
               ))}
             </div>

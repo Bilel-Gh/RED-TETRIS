@@ -1,0 +1,72 @@
+/* Styles pour l'écran de connexion */
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.username-label {
+  font-size: 1rem;
+  color: #bdc3c7;
+}
+
+.username-input {
+  padding: 12px 15px;
+  background-color: #2c3e50;
+  border: 1px solid #34495e;
+  border-radius: 5px;
+  color: white;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.username-input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.username-input::placeholder {
+  color: #7f8c8d;
+}
+
+.login-error {
+  color: #e74c3c;
+  font-size: 0.9rem;
+  padding: 5px 0;
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+.login-button {
+  padding: 12px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-button:hover {
+  background-color: #c0392b;
+}
+
+.login-button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}

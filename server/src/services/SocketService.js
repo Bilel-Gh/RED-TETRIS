@@ -13,8 +13,16 @@ export class SocketService {
     this.io = new Server(httpServer, {
       cors: {
         origin: "*",
-        methods: ["GET", "POST"]
-      }
+        methods: ["GET", "POST"],
+        credentials: true,
+        allowedHeaders: ["Authorization", "X-Requested-With", "Content-Type"]
+      },
+      transports: ['websocket', 'polling'],
+      pingTimeout: 10000,
+      pingInterval: 2000,
+      upgrade: true,
+      reconnection: true,
+      reconnectionAttempts: 5
     });
 
     this.gameManager = new GameManager();
@@ -178,11 +186,26 @@ export class SocketService {
 
           callback({ success: true });
 
+          // Récupérer l'état complet du jeu pour l'envoyer avec l'événement de démarrage
+          const gameState = game.getState();
+
           // Notifier tous les joueurs dans cette partie
           this.io.to(game.id).emit('game:started', {
             gameId: game.id,
-            startedAt: game.startedAt
+            startedAt: game.startedAt,
+            initialState: gameState // Inclure l'état initial du jeu
           });
+
+          // Envoyer immédiatement un état détaillé pour chaque joueur
+          for (const player of game.players.values()) {
+            this.io.to(player.id).emit('game:player_updated', {
+              gameId: game.id,
+              player: {
+                ...player.getState(),
+                isCurrentPlayer: true // Marquer pour savoir que c'est le joueur courant
+              }
+            });
+          }
 
           // Notifier tous les utilisateurs de la mise à jour des parties disponibles
           this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
@@ -242,12 +265,36 @@ export class SocketService {
 
           callback({ success: true, result });
 
-          // Envoyer la mise à jour de l'état du joueur à tous les joueurs dans la partie
-          this.io.to(game.id).emit('game:player_updated', {
+          // Marquer ce joueur comme étant le joueur courant pour le client
+          const playerState = {
+            ...player.getState(),
+            isCurrentPlayer: true
+          };
+
+          // Envoyer d'abord la mise à jour au joueur qui a fait l'action
+          // avec toutes les informations (pièce courante, prochaine pièce, etc.)
+          socket.emit('game:player_updated', {
+            gameId: game.id,
+            player: playerState
+          });
+
+          // Puis envoyer aux autres joueurs sans le marqueur isCurrentPlayer
+          socket.to(game.id).emit('game:player_updated', {
             gameId: game.id,
             player: player.getState()
           });
+
+          // Vérifier si le jeu est terminé après ce mouvement
+          if (game.checkGameEnd()) {
+            // Envoyer les résultats du jeu
+            this.io.to(game.id).emit('game:over', {
+              gameId: game.id,
+              players: Array.from(game.players.values()).map(p => p.getState()),
+              endedAt: Date.now()
+            });
+          }
         } catch (error) {
+          console.error('Erreur lors du mouvement:', error);
           callback({ success: false, error: error.message });
         }
       });
