@@ -95,7 +95,9 @@ export class SocketService {
           callback({ success: true, game: game.getState() });
 
           // Notifier les autres utilisateurs de la nouvelle partie disponible
+          console.log('Émission de l\'événement game:list_updated pour la creation de la partie', game.id);
           this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
+          console.log('Liste des parties mise à jour:', this.gameManager.getAvailableGames());
         } catch (error) {
           callback({ success: false, error: error.message });
         }
@@ -253,37 +255,7 @@ export class SocketService {
             });
             return;
           }
-            // Si la partie n'est plus active (terminée), envoyer une réponse sans erreur
-          // if (!game.isActive) {
-          //   callback({
-          //     success: true,
-          //     result: { moved: false, gameOver: true },
-          //     message: 'La partie est terminée'
-          //   });
-          //   console.log("La partie est terminée !!!!!!");
-          //   return;
-          // }
-
           const player = game.players.get(socket.id);
-
-          // // Vérifier si le joueur existe
-          // if (!player) {
-          //   callback({
-          //     success: false,
-          //     error: 'Vous ne pouvez pas jouer'
-          //   });
-          //   return;
-          // }
-
-          // // Si le joueur est en game over, envoyer une réponse sans erreur
-          // if (player.gameOver) {
-          //   callback({
-          //     success: true,
-          //     result: { moved: false, gameOver: true },
-          //     message: 'Vous ne pouvez plus jouer, vous êtes éliminé'
-          //   });
-          //   return;
-          // }
 
           let result;
 
@@ -331,6 +303,17 @@ export class SocketService {
             gameId: game.id,
             player: result?.player || player.getState()
           });
+
+          // Si le résultat indique des lignes complétées avec pénalités
+          if (result?.penaltyApplied) {
+            // Informer tous les joueurs qu'une pénalité a été appliquée
+            this.io.to(game.id).emit('game:penalty_applied', {
+              gameId: game.id,
+              fromPlayer: player.id,
+              linesCleared: result.linesCleared,
+              penaltyLines: result.penaltyLines
+            });
+          }
 
           // Si le mouvement a provoqué un game over pour ce joueur, émettre l'événement immédiatement
           if (result?.gameOver) {

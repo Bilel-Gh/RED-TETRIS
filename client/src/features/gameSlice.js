@@ -140,6 +140,20 @@ export const gameSlice = createSlice({
         }
       }
     },
+    penaltyApplied: (state, action) => {
+      // Informations sur la pénalité
+      const { fromPlayer, linesCleared, penaltyLines } = action.payload;
+
+      // Si on reçoit une pénalité, on affiche une notification visuelle temporaire
+      if (state.gameState) {
+        state.gameState.lastPenalty = {
+          fromPlayer,
+          linesCleared,
+          penaltyLines,
+          timestamp: Date.now()
+        };
+      }
+    },
     playerGameOver: (state, action) => {
       // Mettre à jour l'état du joueur qui a perdu
       if (state.gameState && state.gameState.playerStates && action.payload.player) {
@@ -257,6 +271,7 @@ export const {
   playerLeft,
   gameOver,
   playerGameOver,
+  penaltyApplied,
   gameStarted,
   movePieceLeft,
   movePieceRight,

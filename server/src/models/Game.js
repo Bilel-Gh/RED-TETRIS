@@ -19,6 +19,11 @@ export class Game {
     this.startedAt = null;
     this.maxPlayers = 4; // Limite à 4 joueurs
     this.host = null; // Premier joueur à rejoindre
+
+    // Pour la séquence de pièces partagée
+    this.pieceSequence = [];
+    this.pieceIndex = 0;
+    this.sequenceLength = 1000; // Nombre de pièces à pré-générer
   }
 
   /**
@@ -86,6 +91,9 @@ export class Game {
       throw new Error('Impossible de démarrer une partie sans joueurs');
     }
 
+    // Générer la séquence de pièces partagée
+    this.generateSharedPieceSequence();
+
     this.isActive = true;
     this.startedAt = Date.now();
 
@@ -99,6 +107,42 @@ export class Game {
   }
 
   /**
+   * Génère une séquence de pièces partagée pour tous les joueurs
+   */
+  generateSharedPieceSequence() {
+    const types = Object.keys(Piece.SHAPES);
+    this.pieceSequence = [];
+
+    // Générer une séquence de pièces aléatoires
+    for (let i = 0; i < this.sequenceLength; i++) {
+      const randomType = types[Math.floor(Math.random() * types.length)];
+      this.pieceSequence.push(randomType);
+    }
+
+    // Réinitialiser l'index
+    this.pieceIndex = 0;
+  }
+
+  /**
+   * Génère une nouvelle pièce à partir de la séquence partagée
+   * @returns {Piece} La pièce générée
+   */
+  generateRandomPiece() {
+    // Si on arrive à la fin de la séquence, régénérer une nouvelle séquence
+    if (this.pieceIndex >= this.pieceSequence.length) {
+      this.generateSharedPieceSequence();
+    }
+
+    // Utiliser le type de pièce de la séquence partagée
+    const type = this.pieceSequence[this.pieceIndex++];
+
+    // Positionner au milieu en haut
+    const piece = new Piece(type, 3, 0);
+
+    return piece;
+  }
+
+  /**
    * Arrête la partie
    */
   stop() {
@@ -108,20 +152,6 @@ export class Game {
     for (const player of this.players.values()) {
       player.isPlaying = false;
     }
-  }
-
-  /**
-   * Génère une nouvelle pièce aléatoire
-   * @returns {Piece} La pièce générée
-   */
-  generateRandomPiece() {
-    const types = Object.keys(Piece.SHAPES);
-    const randomType = types[Math.floor(Math.random() * types.length)];
-
-    // Positionner au milieu en haut
-    const piece = new Piece(randomType, 3, 0);
-
-    return piece;
   }
 
   /**
@@ -213,15 +243,36 @@ export class Game {
       }
     }
 
-    // Vérifier les lignes complètes
+    // Vérifier les lignes complètes et compter leur nombre avant de les supprimer
+    let linesCleared = 0;
+    for (let y = player.grid.length - 1; y >= 0; y--) {
+      if (player.grid[y].every(cell => cell !== 0)) {
+        linesCleared++;
+      }
+    }
+
+    // Variable pour suivre si des pénalités ont été appliquées
+    let penaltyApplied = false;
+    let penaltyLines = 0;
+
+    // Vérifier les lignes complètes et mettre à jour le score
     this.checkLines(player);
+
+    // Si des lignes ont été éliminées (2+), appliquer des pénalités aux autres joueurs
+    if (linesCleared >= 2 && this.players.size > 1) {
+      penaltyApplied = true;
+      penaltyLines = linesCleared - 1;
+    }
 
     // Faire apparaître une nouvelle pièce et vérifier si game over
     const isGameOver = this.spawnPiece(player);
 
     return {
       isGameOver,
-      player: player.getState()
+      player: player.getState(),
+      linesCleared: linesCleared,
+      penaltyApplied,
+      penaltyLines
     };
   }
 
@@ -249,7 +300,57 @@ export class Game {
     // Mettre à jour le score en fonction des lignes complétées
     if (linesCleared > 0) {
       player.addLines(linesCleared);
+
+      // Si au moins 2 lignes ont été éliminées, appliquer des pénalités aux adversaires
+      if (linesCleared >= 2 && this.players.size > 1) {
+        // Nombre de lignes de pénalité = lignes éliminées - 1
+        const penaltyLines = linesCleared - 1;
+
+        // Ajouter des lignes de pénalité à tous les autres joueurs
+        for (const [playerId, otherPlayer] of this.players.entries()) {
+          if (playerId !== player.id && !otherPlayer.gameOver) {
+            this.addPenaltyLines(otherPlayer, penaltyLines);
+          }
+        }
+      }
     }
+  }
+
+  /**
+   * Ajoute des lignes de pénalité à un joueur
+   * @param {Player} player - Le joueur qui reçoit les pénalités
+   * @param {number} numLines - Nombre de lignes de pénalité à ajouter
+   * @returns {boolean} true si le joueur est en game over après l'ajout des pénalités
+   */
+  addPenaltyLines(player, numLines) {
+    // Ne pas ajouter de pénalités aux joueurs déjà éliminés
+    if (player.gameOver) return false;
+
+    const gridWidth = player.grid[0].length;
+
+    // Supprimer les lignes du haut pour faire de la place aux lignes de pénalité
+    player.grid.splice(0, numLines);
+
+    // Créer et ajouter les lignes de pénalité en bas
+    for (let i = 0; i < numLines; i++) {
+      // Créer une ligne avec des blocs de pénalité (valeur 'penalty')
+      // Avec un trou aléatoire pour permettre au joueur de continuer
+      const penaltyLine = Array(gridWidth).fill('penalty');
+      const holePosition = Math.floor(Math.random() * gridWidth);
+      penaltyLine[holePosition] = 0; // Trou dans la ligne de pénalité
+
+      // Ajouter la ligne de pénalité au bas de la grille
+      player.grid.push(penaltyLine);
+    }
+
+    // Vérifier si l'ajout de pénalités a causé un game over
+    if (player.currentPiece && this.checkCollision(player, player.currentPiece)) {
+      player.gameOver = true;
+      player.isPlaying = false;
+      return true;
+    }
+
+    return false;
   }
 
   /**

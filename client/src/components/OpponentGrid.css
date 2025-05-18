@@ -1,0 +1,125 @@
+.opponent-grid-container {
+  display: flex;
+  flex-direction: column;
+  margin: 0 10px;
+  background-color: rgba(30, 30, 30, 0.7);
+  border-radius: 5px;
+  border: 2px solid #333;
+  padding: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  min-width: 150px;
+  height: 300px;
+  transition: all 0.3s ease;
+}
+
+.opponent-grid-container.game-over {
+  opacity: 0.7;
+  filter: grayscale(70%);
+}
+
+.opponent-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 8px;
+  color: white;
+}
+
+.opponent-header h3 {
+  margin: 0;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.opponent-score {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.opponent-eliminated {
+  color: #ff5252;
+  font-weight: bold;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+/* Spectre */
+.opponent-spectrum {
+  display: flex;
+  height: 120px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid #555;
+  padding: 2px;
+  margin-bottom: 8px;
+}
+
+.spectrum-column {
+  flex: 1;
+  margin: 0 1px;
+  background-color: #ff5252;
+  align-self: flex-end;
+  transition: height 0.3s ease;
+}
+
+/* Mini grille */
+.opponent-mini-grid {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  border: 1px solid #555;
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.mini-row {
+  display: flex;
+  flex: 1;
+}
+
+.mini-cell {
+  flex: 1;
+  border: 1px solid rgba(50, 50, 50, 0.2);
+}
+
+/* Styles pour les différentes couleurs de pièces */
+.mini-cell.piece-I {
+  background-color: #00ffff;
+}
+
+.mini-cell.piece-O {
+  background-color: #ffff00;
+}
+
+.mini-cell.piece-T {
+  background-color: #800080;
+}
+
+.mini-cell.piece-S {
+  background-color: #00ff00;
+}
+
+.mini-cell.piece-Z {
+  background-color: #ff0000;
+}
+
+.mini-cell.piece-J {
+  background-color: #0000ff;
+}
+
+.mini-cell.piece-L {
+  background-color: #ff7f00;
+}
+
+/* Style spécifique pour les lignes de pénalité */
+.mini-cell.penalty {
+  background-color: #888;
+  background-image: repeating-linear-gradient(
+    45deg,
+    #888,
+    #888 5px,
+    #666 5px,
+    #666 10px
+  );
+}

@@ -1,46 +1,48 @@
 import React from 'react';
-import './Tetris.css';
+import './OpponentGrid.css';
 
-// Version simplifiée des couleurs pour les grilles des adversaires
-const COLORS = {
-  'I': 'opponent-cell-i',
-  'O': 'opponent-cell-o',
-  'T': 'opponent-cell-t',
-  'S': 'opponent-cell-s',
-  'Z': 'opponent-cell-z',
-  'J': 'opponent-cell-j',
-  'L': 'opponent-cell-l',
-  '0': 'opponent-cell-empty', // Cellule vide
-};
-
-const OpponentGrid = ({ username, grid, score, gameOver }) => {
-  // Si la grille n'est pas définie, afficher une grille vide
-  const displayGrid = grid || Array(20).fill().map(() => Array(10).fill('0'));
-
-  // Fonction pour déterminer la classe de la cellule
-  const getCellClass = (cell) => {
-    if (cell === '0') return 'cell-empty';
-    if (cell === 'X') return 'cell-indestructible';
-    return 'cell-filled'; // Pour simplifier, toutes les pièces ont la même couleur pour l'adversaire
-  };
+/**
+ * Composant qui affiche la grille d'un adversaire avec son spectre
+ */
+const OpponentGrid = ({ username, grid, score, gameOver, spectrum }) => {
+  // Calcul de la hauteur maximale pour le rendu visuel du spectre
+  const maxHeight = grid.length;
 
   return (
-    <div className="opponent-grid-container">
-      <div className="opponent-name">{username || 'Adversaire'}</div>
-      <div className="opponent-grid">
-        {displayGrid.map((row, rowIndex) => (
-          <div key={`row-${rowIndex}`} className="opponent-row">
-            {row.map((cell, colIndex) => (
+    <div className={`opponent-grid-container ${gameOver ? 'game-over' : ''}`}>
+      <div className="opponent-header">
+        <h3>{username || 'Adversaire'}</h3>
+        <span className="opponent-score">Score: {score || 0}</span>
+        {gameOver && <span className="opponent-eliminated">Éliminé</span>}
+      </div>
+
+      {/* Affichage du spectre au lieu de la grille complète */}
+      <div className="opponent-spectrum">
+        {spectrum && spectrum.map((height, x) => (
+          <div
+            key={x}
+            className="spectrum-column"
+            style={{
+              height: `${(height / maxHeight) * 100}%`,
+              backgroundColor: gameOver ? '#555' : '#ff5252'
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Grille complète (version mini) */}
+      <div className="opponent-mini-grid">
+        {grid && grid.map((row, y) => (
+          <div key={y} className="mini-row">
+            {row.map((cell, x) => (
               <div
-                key={`cell-${rowIndex}-${colIndex}`}
-                className={`opponent-cell ${getCellClass(cell)}`}
+                key={`${x}-${y}`}
+                className={`mini-cell ${cell ? (cell === 'penalty' ? 'penalty' : `piece-${cell}`) : ''}`}
               />
             ))}
           </div>
         ))}
-        {gameOver && <div className="opponent-gameover">Game Over</div>}
       </div>
-      <div className="opponent-grid-score">Score: {score || 0}</div>
     </div>
   );
 };

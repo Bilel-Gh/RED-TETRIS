@@ -1,3 +1,5 @@
+import { GRID_WIDTH, GRID_HEIGHT } from '../config/gameConfig.js';
+
 /**
  * Classe représentant un joueur dans le jeu Tetris
  */
@@ -20,23 +22,42 @@ export class Player {
     this.finalLevel = 0; // Niveau final quand la partie se termine
 
     // La grille de jeu (10x20 par défaut)
-    this.grid = Array(20).fill().map(() => Array(10).fill(0));
+    this.grid = this.createEmptyGrid();
 
     // Pièce en cours et pièce suivante
     this.currentPiece = null;
     this.nextPiece = null;
 
     // Gestion du temps et de la vitesse
-    this.lastFallTime = Date.now();
+    this.lastFallTime = 0;
     this.fallSpeed = 1000; // Temps en ms entre les chutes (diminue avec le niveau)
+
+    // Spectre pour visualisation
+    this.spectrum = Array(GRID_WIDTH || 10).fill(0);
+  }
+
+  /**
+   * Crée une grille vide
+   * @returns {Array} Grille 2D vide
+   */
+  createEmptyGrid() {
+    return Array(GRID_HEIGHT || 20).fill().map(() => Array(GRID_WIDTH || 10).fill(0));
   }
 
   /**
    * Commence une nouvelle partie
    */
   startGame() {
-    this.resetGame();
+    this.score = 0;
+    this.level = 1;
+    this.lines = 0;
     this.isPlaying = true;
+    this.gameOver = false;
+    this.lastFallTime = Date.now();
+    this.grid = this.createEmptyGrid();
+    this.currentPiece = null;
+    this.nextPiece = null;
+    this.spectrum = Array(GRID_WIDTH || 10).fill(0);
   }
 
   /**
@@ -49,11 +70,12 @@ export class Player {
     this.gameOver = false;
     this.finalScore = 0;
     this.finalLevel = 0;
-    this.grid = Array(20).fill().map(() => Array(10).fill(0));
+    this.grid = this.createEmptyGrid();
     this.currentPiece = null;
     this.nextPiece = null;
     this.fallSpeed = 1000;
-    this.lastFallTime = Date.now();
+    this.lastFallTime = 0;
+    this.spectrum = Array(GRID_WIDTH || 10).fill(0);
   }
 
   /**
@@ -66,30 +88,67 @@ export class Player {
 
   /**
    * Ajoute des lignes complétées au compteur et met à jour le niveau
-   * @param {number} linesCount - Nombre de lignes complétées
+   * @param {number} numLines - Nombre de lignes complétées
    */
-  addLines(linesCount) {
-    if (linesCount <= 0) return;
+  addLines(numLines) {
+    this.lines += numLines;
 
-    // Ajout des lignes au compteur
-    this.lines += linesCount;
-
-    // Calcul du score selon le nombre de lignes complétées en une fois
-    let points = 0;
-    switch (linesCount) {
-      case 1: points = 40 * this.level; break;
-      case 2: points = 100 * this.level; break;
-      case 3: points = 300 * this.level; break;
-      case 4: points = 1200 * this.level; break; // Tetris!
+    // Calculer le score en fonction du nombre de lignes
+    // Bonus pour les lignes multiples
+    let scoreToAdd = 0;
+    switch (numLines) {
+      case 1:
+        scoreToAdd = 40 * this.level;
+        break;
+      case 2:
+        scoreToAdd = 100 * this.level;
+        break;
+      case 3:
+        scoreToAdd = 300 * this.level;
+        break;
+      case 4:
+        scoreToAdd = 1200 * this.level;
+        break;
+      default:
+        scoreToAdd = numLines * 40 * this.level;
     }
-    this.score += points;
 
-    // Mise à jour du niveau (toutes les 10 lignes)
-    const newLevel = Math.floor(this.lines / 10) + 1;
-    if (newLevel > this.level) {
-      this.level = newLevel;
-      // Augmentation de la vitesse avec le niveau
-      this.fallSpeed = Math.max(100, 1000 - ((this.level - 1) * 100));
+    this.score += scoreToAdd;
+
+    // Augmenter le niveau tous les 10 lignes
+    this.level = Math.floor(this.lines / 10) + 1;
+
+    // Accélérer la vitesse de chute en fonction du niveau
+    this.fallSpeed = Math.max(100, 1000 - ((this.level - 1) * 50));
+
+    // Mettre à jour le spectre
+    this.updateSpectrum();
+
+    return {
+      score: this.score,
+      level: this.level,
+      lines: this.lines,
+      fallSpeed: this.fallSpeed
+    };
+  }
+
+  /**
+   * Met à jour le spectre du joueur (hauteur maximale de chaque colonne)
+   */
+  updateSpectrum() {
+    const width = this.grid[0].length;
+    this.spectrum = Array(width).fill(0);
+
+    // Parcourir chaque colonne
+    for (let x = 0; x < width; x++) {
+      // Trouver la hauteur maximale de chaque colonne (en partant du haut)
+      for (let y = 0; y < this.grid.length; y++) {
+        if (this.grid[y][x] !== 0) {
+          // Hauteur = nombre de lignes - position y
+          this.spectrum[x] = this.grid.length - y;
+          break;
+        }
+      }
     }
   }
 
@@ -98,6 +157,9 @@ export class Player {
    * @returns {Object} État du joueur
    */
   getState() {
+    // Mettre à jour le spectre avant de renvoyer l'état
+    this.updateSpectrum();
+
     return {
       id: this.id,
       username: this.username,
@@ -113,11 +175,14 @@ export class Player {
         y: this.currentPiece.y,
         rotation: this.currentPiece.rotation
       } : null,
-      nextPiece: this.nextPiece ? this.nextPiece.type : null,
+      nextPiece: this.nextPiece ? {
+        type: this.nextPiece.type
+      } : null,
       isPlaying: this.isPlaying,
       gameOver: this.gameOver,
       finalScore: this.finalScore || this.score, // Utiliser le score actuel par défaut
-      finalLevel: this.finalLevel || this.level  // Utiliser le niveau actuel par défaut
+      finalLevel: this.finalLevel || this.level,  // Utiliser le niveau actuel par défaut
+      spectrum: this.spectrum // Ajout du spectre pour la visualisation des adversaires
     };
   }
 }

@@ -427,10 +427,22 @@ const GamePage = () => {
                     grid={playerState.grid}
                     score={playerState.score}
                     gameOver={playerState.gameOver}
+                    spectrum={playerState.spectrum}
                   />
                 ))
               }
             </div>
+
+            {/* Notification de pénalité */}
+            {gameState.lastPenalty && (Date.now() - gameState.lastPenalty.timestamp < 3000) && (
+              <div className="penalty-notification">
+                <span className="penalty-text">
+                  {gameState.lastPenalty.fromPlayer === user?.id
+                    ? `Vous avez envoyé ${gameState.lastPenalty.penaltyLines} lignes de pénalité aux adversaires !`
+                    : `Vous avez reçu ${gameState.lastPenalty.penaltyLines} lignes de pénalité !`}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

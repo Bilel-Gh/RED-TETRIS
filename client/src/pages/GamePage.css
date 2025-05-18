@@ -569,3 +569,33 @@
     width: 100%;
   }
 }
+
+/* Notification de pénalité */
+.penalty-notification {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(255, 50, 50, 0.85);
+  color: white;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  animation: fadeInOut 3s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.penalty-text {
+  text-align: center;
+}
+
+/* Animation pour l'apparition/disparition */
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0; }
+  10%, 90% { opacity: 1; }
+}

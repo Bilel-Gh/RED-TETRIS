@@ -15,7 +15,8 @@ import {
   updateGameState,
   gameStarted,
   gameOver,
-  playerGameOver
+  playerGameOver,
+  penaltyApplied
 } from '../features/gameSlice';
 
 // Socket instance
@@ -137,6 +138,7 @@ const setupGameEvents = () => {
   socket.off('game:started');
   socket.off('game:over');
   socket.off('game:player_gameover');
+  socket.off('game:penalty_applied');
   socket.off('user:joined');
   socket.off('user:left');
 
@@ -171,6 +173,13 @@ const setupGameEvents = () => {
   socket.on('game:player_updated', (data) => {
     // console.log('Mise à jour de l\'état du joueur reçue:', data.player?.id);
     store.dispatch(updateGameState(data));
+  });
+
+  // Des pénalités ont été appliquées
+  socket.on('game:penalty_applied', (data) => {
+    console.log('Pénalité appliquée:', data);
+    // Afficher une notification ou un effet visuel pour indiquer la pénalité
+    store.dispatch(penaltyApplied(data));
   });
 
   // La partie a démarré
@@ -233,6 +242,7 @@ const ensureConnection = () => {
       // Écouter les erreurs de connexion
       socket.once('connect_error', (error) => {
         clearTimeout(timeout);
+        setupGameEvents();
         reject(error);
       });
 
@@ -265,6 +275,9 @@ const login = async (username) => {
 
           // Mise à jour du state Redux
           store.dispatch(loginSuccess(response.user));
+
+          setupGameEvents();
+
           console.log("Connexion réussie, user ID:", currentUserId);
           resolve(response);
         } else {
