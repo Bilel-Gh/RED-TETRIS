@@ -16,6 +16,8 @@ export class Player {
     this.isPlaying = false;
     this.gameOver = false;
     this.joinedAt = Date.now(); // Horodatage d'arrivée du joueur
+    this.finalScore = 0; // Score final quand la partie se termine
+    this.finalLevel = 0; // Niveau final quand la partie se termine
 
     // La grille de jeu (10x20 par défaut)
     this.grid = Array(20).fill().map(() => Array(10).fill(0));
@@ -45,6 +47,8 @@ export class Player {
     this.level = 1;
     this.lines = 0;
     this.gameOver = false;
+    this.finalScore = 0;
+    this.finalLevel = 0;
     this.grid = Array(20).fill().map(() => Array(10).fill(0));
     this.currentPiece = null;
     this.nextPiece = null;
@@ -111,7 +115,9 @@ export class Player {
       } : null,
       nextPiece: this.nextPiece ? this.nextPiece.type : null,
       isPlaying: this.isPlaying,
-      gameOver: this.gameOver
+      gameOver: this.gameOver,
+      finalScore: this.finalScore || this.score, // Utiliser le score actuel par défaut
+      finalLevel: this.finalLevel || this.level  // Utiliser le niveau actuel par défaut
     };
   }
 }

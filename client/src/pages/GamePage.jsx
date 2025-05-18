@@ -30,6 +30,9 @@ const GamePage = () => {
   const [keyEnabled, setKeyEnabled] = useState(true);
   const [lastMoveTime, setLastMoveTime] = useState(Date.now());
   const [actionFeedback, setActionFeedback] = useState(null);
+  const [isStartingGame, setIsStartingGame] = useState(false);
+  const [startGameError, setStartGameError] = useState(null);
+  const [showGameOverModal, setShowGameOverModal] = useState(false);
 
   // Gestionnaire d'événements clavier
   const handleKeyDown = useCallback((e) => {
@@ -38,8 +41,11 @@ const GamePage = () => {
       return;
     }
 
-    // Vérifier si le jeu est actif
-    if (!gameState || !gameState.isActive || !keyEnabled) return;
+    // Vérifier si le jeu est actif et que le joueur n'est pas en game over
+    const isCurrentPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
+    if (!gameState || !gameState.isActive || isCurrentPlayerGameOver || !keyEnabled) {
+      return;
+    }
 
     // Empêcher les actions par défaut pour les touches du jeu
     if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' '].includes(e.key)) {
@@ -63,35 +69,55 @@ const GamePage = () => {
       case 'ArrowLeft':
         moveLeft().then(response => {
           if (response && response.success) {
-            actionPerformed = "Gauche";
+            if (response.message) {
+              setActionFeedback(response.message);
+            } else {
+              actionPerformed = "Gauche";
+            }
           }
         });
         break;
       case 'ArrowRight':
         moveRight().then(response => {
           if (response && response.success) {
-            actionPerformed = "Droite";
+            if (response.message) {
+              setActionFeedback(response.message);
+            } else {
+              actionPerformed = "Droite";
+            }
           }
         });
         break;
       case 'ArrowDown':
         moveDown().then(response => {
           if (response && response.success) {
-            actionPerformed = "Bas";
+            if (response.message) {
+              setActionFeedback(response.message);
+            } else {
+              actionPerformed = "Bas";
+            }
           }
         });
         break;
       case 'ArrowUp':
         rotate().then(response => {
           if (response && response.success) {
-            actionPerformed = "Rotation";
+            if (response.message) {
+              setActionFeedback(response.message);
+            } else {
+              actionPerformed = "Rotation";
+            }
           }
         });
         break;
       case ' ': // Espace
         drop().then(response => {
           if (response && response.success) {
-            actionPerformed = "Chute";
+            if (response.message) {
+              setActionFeedback(response.message);
+            } else {
+              actionPerformed = "Chute";
+            }
           }
         });
         break;
@@ -107,7 +133,7 @@ const GamePage = () => {
 
     // Réactiver les touches après un court délai
     setTimeout(() => setKeyEnabled(true), 50);
-  }, [gameState, moveLeft, moveRight, moveDown, rotate, drop, keyEnabled, lastMoveTime]);
+  }, [gameState, user, moveLeft, moveRight, moveDown, rotate, drop, keyEnabled, lastMoveTime]);
 
   // Attacher/détacher les écouteurs d'événements clavier
   useEffect(() => {
@@ -119,8 +145,16 @@ const GamePage = () => {
 
   // Gérer le départ du jeu
   const handleLeave = async () => {
-    await handleLeaveGame();
-    navigate('/lobby');
+    console.log('Tentative de quitter la partie...');
+    try {
+      const result = await handleLeaveGame();
+      console.log('Résultat de handleLeaveGame:', result);
+      navigate('/lobby');
+    } catch (error) {
+      console.error('Erreur lors de la tentative de quitter la partie:', error);
+      // En cas d'erreur, rediriger quand même vers le lobby
+      navigate('/lobby');
+    }
   };
 
   // Gérer la déconnexion
@@ -132,19 +166,79 @@ const GamePage = () => {
 
   // Gérer le démarrage du jeu
   const handleStart = async () => {
-    const result = await startGame();
-    if (!result.success) {
-      console.error('Erreur lors du démarrage du jeu:', result.error);
+    // Éviter les clics multiples
+    if (isStartingGame) return;
+
+    setIsStartingGame(true);
+    setStartGameError(null);
+
+    try {
+      console.log("Tentative de démarrage de la partie...");
+      const result = await startGame();
+      console.log("Résultat du démarrage:", result);
+
+      if (!result.success) {
+        setStartGameError(result.error || "Erreur lors du démarrage du jeu");
+        console.error('Erreur lors du démarrage du jeu:', result.error);
+      }
+    } catch (error) {
+      console.error('Exception lors du démarrage du jeu:', error);
+      setStartGameError(error.message || "Une erreur inattendue s'est produite");
+    } finally {
+      // Réactiver le bouton après 1.5 secondes pour éviter les clics répétés
+      setTimeout(() => {
+        setIsStartingGame(false);
+      }, 1500);
     }
   };
 
+  useEffect(() => {
+    console.log('GAME STATE', gameState);
+  }, [gameState]);
+
+  // Détecter si le jeu est terminé (pas d'activité)
+  const isGameOver = !gameState?.isActive && gameState?.playerStates && Object.keys(gameState.playerStates).length > 0;
+
   // Détecter si le joueur actuel est éliminé
   const isCurrentPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
+
+  // Vérifier si le joueur vient de perdre pour afficher le modal
+  useEffect(() => {
+    console.log('isCurrentPlayerGameOver:', isCurrentPlayerGameOver);
+
+    // Si le joueur a perdu, afficher la modal
+    if (isCurrentPlayerGameOver) {
+      console.log('Affichage de la modal Game Over');
+      setShowGameOverModal(true);
+    }
+  }, [isCurrentPlayerGameOver]);
 
   // Déterminer le nombre de joueurs encore en jeu
   const activePlayers = gameState?.playerStates ?
     Object.values(gameState.playerStates).filter(p => !p.gameOver).length :
     0;
+
+  const isSoloGame = gameState?.isSoloGame;
+
+  // Pour le débogage - afficher les états du jeu
+  useEffect(() => {
+    if (gameState && user) {
+      // const playerState = gameState.playerStates?.[user.id];
+      // console.log('États du jeu:', {
+      //   isSoloGame,
+      //   isGameOver,
+      //   isCurrentPlayerGameOver,
+      //   showGameOverModal,
+      //   activePlayers,
+      //   'playerState': playerState
+      // });
+      console.log('showGameOverModal', showGameOverModal);
+      console.log('isCurrentPlayerGameOver', isCurrentPlayerGameOver);
+      console.log('isGameOver', isGameOver);
+      console.log('activePlayers', activePlayers);
+      console.log('GAME OVER', gameState.playerStates);
+    }
+  }, [gameState, isGameOver, isCurrentPlayerGameOver, showGameOverModal, activePlayers, isSoloGame, user]);
 
   // Générer l'URL de partage avec le nouveau format
   const generateShareUrl = () => {
@@ -156,11 +250,11 @@ const GamePage = () => {
   };
 
   // Pour le débogage de l'état du jeu
-  useEffect(() => {
-    if (gameState) {
-      console.log('État actuel du jeu:', gameState);
-    }
-  }, [gameState]);
+  // useEffect(() => {
+  //   if (gameState) {
+  //     console.log('État actuel du jeu:', gameState);
+  //   }
+  // }, [gameState]);
 
   return (
     <PageTransition>
@@ -183,8 +277,12 @@ const GamePage = () => {
 
           <div className="game-controls">
             {currentGame && currentGame.host === user?.id && !gameState?.isActive && (
-              <button onClick={handleStart} className="start-button">
-                Démarrer la partie
+              <button
+                onClick={handleStart}
+                className={`start-button ${isStartingGame ? 'loading' : ''}`}
+                disabled={isStartingGame}
+              >
+                {isStartingGame ? 'Démarrage...' : 'Démarrer la partie'}
               </button>
             )}
             <button onClick={handleLeave} className="leave-button">
@@ -194,6 +292,14 @@ const GamePage = () => {
               Déconnexion
             </button>
           </div>
+
+          {/* Afficher les erreurs de démarrage de jeu */}
+          {startGameError && (
+            <div className="start-game-error">
+              <span>{startGameError}</span>
+              <button onClick={() => setStartGameError(null)}>×</button>
+            </div>
+          )}
         </div>
 
         {!gameState?.isActive && (
@@ -232,16 +338,32 @@ const GamePage = () => {
                   <div className="action-feedback">{actionFeedback}</div>
                 )}
 
-                {isCurrentPlayerGameOver && (
-                  <div className="game-over-message">
-                    Game Over!
-                  </div>
+                {activePlayers === 1 && !isCurrentPlayerGameOver && (
+                  <>
+                    <div className="winner-message">
+                      {isSoloGame ? "Vous êtes dans une partie solo !" : "Vous êtes le dernier survivant! Victoire!"}
+                    </div>
+                    <button
+                      className="exit-game-over-btn"
+                      onClick={handleLeave}
+                    >
+                      Quitter la partie
+                    </button>
+                  </>
                 )}
 
-                {activePlayers === 1 && !isCurrentPlayerGameOver && (
-                  <div className="winner-message">
-                    Vous êtes le dernier survivant!
-                  </div>
+                {isGameOver && !isCurrentPlayerGameOver && (
+                  <>
+                    <div className="game-over-message">
+                      La partie est terminée!
+                    </div>
+                    <button
+                      className="exit-game-over-btn"
+                      onClick={handleLeave}
+                    >
+                      Quitter la partie
+                    </button>
+                  </>
                 )}
 
                 {/* Contrôles à l'écran pour mobiles */}
@@ -308,6 +430,58 @@ const GamePage = () => {
                   />
                 ))
               }
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Game Over pour le joueur actuel */}
+        {showGameOverModal && isCurrentPlayerGameOver && (
+          <div className="game-over-modal-overlay">
+            <div className="game-over-modal">
+              <div className="game-over-modal-header">
+                <h2>GAME OVER {isGameOver ? 'true' : 'false'}</h2>
+              </div>
+              <div className="game-over-modal-content">
+                <p>{isSoloGame ? "Partie Solo Terminée !" : "Vous avez perdu cette partie !"}</p>
+                <div className="game-over-stats">
+                  <div className="stat-result">
+                    <span className="stat-label">Score final</span>
+                    <span className="stat-final">{gameState?.playerStates?.[user?.id]?.score || 0}</span>
+                  </div>
+                  <div className="stat-result">
+                    <span className="stat-label">Niveau atteint</span>
+                    <span className="stat-final">{gameState?.playerStates?.[user?.id]?.level || 1}</span>
+                  </div>
+                  <div className="stat-result">
+                    <span className="stat-label">Lignes éliminées</span>
+                    <span className="stat-final">{gameState?.playerStates?.[user?.id]?.lines || 0}</span>
+                  </div>
+                </div>
+                <p className="game-over-message-wait">
+                  {isSoloGame
+                    ? `La partie solo est terminée !`
+                    : activePlayers > 0
+                      ? "Vous pouvez observer la partie en cours ou quitter maintenant."
+                      : "La partie est maintenant terminée pour tous les joueurs."
+                  }
+                </p>
+              </div>
+              <div className="game-over-modal-footer">
+                {!isSoloGame && activePlayers > 0 && (
+                  <button
+                    className="game-over-close-btn"
+                    onClick={() => setShowGameOverModal(false)}
+                  >
+                    Observer la partie
+                  </button>
+                )}
+                <button
+                  className="game-over-exit-btn"
+                  onClick={handleLeave}
+                >
+                  Quitter la partie
+                </button>
+              </div>
             </div>
           </div>
         )}

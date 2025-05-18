@@ -54,7 +54,7 @@ export const gameSlice = createSlice({
       state.gameState = null;
     },
     updateGameState: (state, action) => {
-      console.log('Mise à jour de l\'état du jeu:', action.payload);
+      // console.log('Mise à jour de l\'état du jeu:', action.payload);
 
       // Si on reçoit des données sur un joueur spécifique
       if (action.payload.player) {
@@ -88,21 +88,21 @@ export const gameSlice = createSlice({
             lines: action.payload.player.lines
           });
 
-          // Afficher les informations de débogage pour les pièces
-          if (action.payload.player.currentPiece) {
-            console.log('Pièce courante actualisée:', action.payload.player.currentPiece);
-          }
+          // // Afficher les informations de débogage pour les pièces
+          // if (action.payload.player.currentPiece) {
+          //   console.log('Pièce courante actualisée:', action.payload.player.currentPiece);
+          // }
 
-          if (action.payload.player.nextPiece) {
-            console.log('Prochaine pièce actualisée:', action.payload.player.nextPiece);
-          }
+          // if (action.payload.player.nextPiece) {
+          //   console.log('Prochaine pièce actualisée:', action.payload.player.nextPiece);
+          // }
         }
       } else {
         // Mise à jour directe de l'état complet du jeu
         state.gameState = action.payload;
 
-        // Afficher les informations de débogage pour l'état du jeu
-        console.log('État complet du jeu mis à jour:', state.gameState);
+        // // Afficher les informations de débogage pour l'état du jeu
+        // console.log('État complet du jeu mis à jour:', state.gameState);
       }
     },
     updatePlayers: (state, action) => {
@@ -120,6 +120,41 @@ export const gameSlice = createSlice({
         state.currentGame.host = action.payload.newHost;
       }
     },
+    gameOver: (state, action) => {
+      // Mettre à jour les informations de fin de jeu
+      if (state.gameState) {
+        state.gameState.isActive = false;
+        state.gameState.endedAt = action.payload.endedAt;
+
+        // Mettre à jour les états individuels des joueurs
+        if (action.payload.players) {
+          action.payload.players.forEach(player => {
+            if (state.gameState.playerStates && player.id) {
+              state.gameState.playerStates[player.id] = {
+                ...state.gameState.playerStates[player.id],
+                ...player,
+                gameOver: true
+              };
+            }
+          });
+        }
+      }
+    },
+    playerGameOver: (state, action) => {
+      // Mettre à jour l'état du joueur qui a perdu
+      if (state.gameState && state.gameState.playerStates && action.payload.player) {
+        const playerId = action.payload.player.id;
+
+        // Mettre à jour l'état du joueur spécifique en game over
+        state.gameState.playerStates[playerId] = {
+          ...state.gameState.playerStates[playerId],
+          ...action.payload.player,
+          gameOver: true
+        };
+
+        console.log(`Joueur ${playerId} a perdu la partie. Mise à jour de l'état.`);
+      }
+    },
     gameStarted: (state, action) => {
       state.currentGame = {
         ...state.currentGame,
@@ -129,12 +164,19 @@ export const gameSlice = createSlice({
 
       // Initialiser l'état du jeu si des données sont fournies
       if (action.payload.initialState) {
-        console.log('Initialisation du jeu avec état initial:', action.payload.initialState);
+        // console.log('Initialisation du jeu avec état initial:', action.payload.initialState);
         state.gameState = action.payload.initialState;
 
         // S'assurer que l'état du jeu contient toutes les propriétés nécessaires
         if (!state.gameState.playerStates) {
           state.gameState.playerStates = {};
+        }
+
+        // si le joueur est seul, on met à jour l'état du jeu
+        if (action.payload.initialState.players.length === 1) {
+          state.gameState.isSoloGame = true;
+        } else {
+          state.gameState.isSoloGame = false;
         }
 
         // Marquer le jeu comme actif
@@ -145,30 +187,50 @@ export const gameSlice = createSlice({
           isActive: true,
           grid: Array(20).fill().map(() => Array(10).fill("0")),
           score: 0,
-          level: 1,
+          level: 0,
           lines: 0,
-          playerStates: {}
+          playerStates: {},
+          isSoloGame: true
         };
       }
     },
     // Actions pour le mouvement des pièces
-    movePieceLeft: (state) => {
+    movePieceLeft: () => {
       // Cette action sera interceptée par un middleware qui enverra une requête au serveur
     },
-    movePieceRight: (state) => {
+    movePieceRight: () => {
       // Cette action sera interceptée par un middleware qui enverra une requête au serveur
     },
-    movePieceDown: (state) => {
+    movePieceDown: () => {
       // Cette action sera interceptée par un middleware qui enverra une requête au serveur
     },
-    rotatePiece: (state) => {
+    rotatePiece: () => {
       // Cette action sera interceptée par un middleware qui enverra une requête au serveur
     },
-    dropPiece: (state) => {
+    dropPiece: () => {
+      // Cette action sera interceptée par un middleware qui enverra une requête au serveur
+    },
+    autoDropPiece: () => {
       // Cette action sera interceptée par un middleware qui enverra une requête au serveur
     },
     // Réinitialiser l'état du jeu
     resetGame: (state) => {
+      // Sauvegarder temporairement les résultats de la partie terminée pour utilisation potentielle dans GameOverPage
+      if (state.gameState && !state.gameState.isActive) {
+        state.gameResults = {
+          endedAt: state.gameState.endedAt,
+          players: Object.values(state.gameState.playerStates || {}).map(player => ({
+            id: player.id,
+            username: player.username,
+            score: player.score || 0,
+            level: player.level || 1,
+            lines: player.lines || 0,
+            gameOver: true
+          }))
+        };
+      }
+
+      // Réinitialiser l'état complet du jeu
       state.currentGame = null;
       state.gameState = null;
       state.players = [];
@@ -193,12 +255,15 @@ export const {
   updatePlayers,
   playerJoined,
   playerLeft,
+  gameOver,
+  playerGameOver,
   gameStarted,
   movePieceLeft,
   movePieceRight,
   movePieceDown,
   rotatePiece,
   dropPiece,
+  autoDropPiece,
   resetGame
 } = gameSlice.actions;
 

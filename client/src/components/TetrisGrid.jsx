@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useGame } from '../hooks/useGame';
+import { useSelector } from 'react-redux';
 import './Tetris.css';
 
 // Couleurs des pièces Tetris sans Tailwind
@@ -15,8 +17,9 @@ const COLORS = {
 };
 
 const TetrisGrid = ({ grid, currentPiece }) => {
-  console.log('TetrisGrid - currentPiece:', currentPiece);
-  console.log('TetrisGrid - grid:', grid);
+  const { autoDrop } = useGame();
+  const { gameState } = useSelector(state => state.game);
+  const { user } = useSelector(state => state.auth);
 
   // Grille par défaut si grid n'est pas défini
   const defaultGrid = Array(20).fill().map(() => Array(10).fill('0'));
@@ -24,9 +27,70 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   const animationFrameRef = useRef(null);
   const [displayGrid, setDisplayGrid] = useState(defaultGrid);
   const [fallingCells, setFallingCells] = useState([]);
+  const autoDropIntervalRef = useRef(null);
 
   // Utiliser la grille fournie ou la grille par défaut
   const baseGrid = grid || defaultGrid;
+
+  // Configuration de la chute automatique
+  useEffect(() => {
+    // Vérifier si le joueur est en game over ou si la partie est inactive
+    const isGameActive = gameState?.isActive;
+    const isPlayerGameOver = gameState?.playerStates?.[Object.keys(gameState?.playerStates || {})[0]]?.gameOver;
+
+    // Si le jeu n'est pas actif ou si le joueur est en game over, ne pas configurer la chute automatique
+    if (!currentPiece || !isGameActive || isPlayerGameOver) {
+      // Nettoyer tout intervalle existant
+      if (autoDropIntervalRef.current) {
+        clearInterval(autoDropIntervalRef.current);
+        autoDropIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Nettoyer tout intervalle existant
+    if (autoDropIntervalRef.current) {
+      clearInterval(autoDropIntervalRef.current);
+    }
+
+    // Obtenir le niveau actuel du joueur depuis l'état du jeu
+    const level = gameState?.level || 1;
+
+    // La vitesse augmente avec le niveau (plus le nombre est petit, plus c'est rapide)
+    // Formule plus progressive: niveau 1 = 800ms, niveau 10 = 200ms
+    const baseSpeed = 900;
+    const speedReduction = 70; // ms à réduire par niveau
+    const minSpeed = 100; // vitesse maximale (ms minimum)
+
+    const dropSpeed = Math.max(baseSpeed - ((level - 1) * speedReduction), minSpeed);
+
+    // console.log(`Chute automatique configurée - Niveau: ${level}, Vitesse: ${dropSpeed}ms`);
+
+    // Créer un nouvel intervalle pour la chute automatique
+    autoDropIntervalRef.current = setInterval(() => {
+      // Vérifier à nouveau avant chaque chute que le jeu est toujours actif
+      const currentGameState = gameState;
+      const isStillActive = currentGameState?.isActive;
+      const isNowGameOver = currentGameState?.playerStates?.[Object.keys(currentGameState?.playerStates || {})[0]]?.gameOver;
+
+      if (isStillActive && !isNowGameOver) {
+        autoDrop();
+      } else {
+        // Arrêter la chute si le jeu n'est plus actif
+        if (autoDropIntervalRef.current) {
+          clearInterval(autoDropIntervalRef.current);
+          autoDropIntervalRef.current = null;
+        }
+      }
+    }, dropSpeed);
+
+    // Nettoyer l'intervalle lors du démontage ou lorsque la pièce change
+    return () => {
+      if (autoDropIntervalRef.current) {
+        clearInterval(autoDropIntervalRef.current);
+      }
+    };
+  }, [currentPiece, autoDrop, gameState]);
 
   // Mettre à jour la grille avec la pièce courante
   useEffect(() => {
@@ -44,8 +108,6 @@ const TetrisGrid = ({ grid, currentPiece }) => {
       // Ajouter la pièce courante à la grille (si elle existe)
       if (currentPiece && currentPiece.shape) {
         const { type, shape, x, y } = currentPiece;
-        console.log('Rendu de la pièce:', type, 'à position:', x, y);
-
         // Vérifier si la position de la pièce a changé
         const positionChanged = !lastPiecePosition ||
                                lastPiecePosition.x !== x ||
@@ -142,11 +204,28 @@ const TetrisGrid = ({ grid, currentPiece }) => {
     ));
   };
 
+  // Vérifier si le joueur actuel est en game over
+  const isPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
+
+  // Récupère explicitement l'état du joueur pour un meilleur debug
+  const playerState = gameState?.playerStates?.[user?.id];
+
+  useEffect(() => {
+    if (isPlayerGameOver) {
+      console.log('TetrisGrid: Joueur en Game Over:', playerState);
+    }
+  }, [isPlayerGameOver, playerState]);
+
   return (
-    <div className="tetris-grid-container">
+    <div className={`tetris-grid-container ${isPlayerGameOver ? 'game-over' : ''}`}>
       <div className="tetris-grid">
         {renderGrid()}
       </div>
+      {isPlayerGameOver && (
+        <div className="game-over-overlay">
+          <span>GAME OVER</span>
+        </div>
+      )}
     </div>
   );
 };

@@ -144,6 +144,20 @@ export class SocketService {
           }
 
           const gameId = game.id;
+
+          // Vérifier si c'est le seul joueur actif restant
+          const activePlayers = Array.from(game.players.values()).filter(p => !p.gameOver).length;
+          const isCurrentPlayerGameOver = game.players.get(socket.id)?.gameOver;
+
+          // Si c'est le dernier joueur actif ou si tous les joueurs sont en game over,
+          // terminer la partie complètement
+          if (activePlayers <= 1 || (isCurrentPlayerGameOver && activePlayers === 0)) {
+            console.log('Dernier joueur actif quitte la partie ou tous les joueurs sont en game over, terminaison de la partie');
+            // Marquer la partie comme inactive
+            game.isActive = false;
+            game.endedAt = Date.now();
+          }
+
           this.gameManager.leaveGame(socket.id);
 
           // Quitter la room Socket.io
@@ -231,17 +245,47 @@ export class SocketService {
         try {
           const game = this.gameManager.getPlayerGame(socket.id);
 
-          if (!game || !game.isActive) {
-            throw new Error('Partie non active');
+          // Vérifier si le jeu existe
+          if (!game) {
+            callback({
+              success: false,
+              error: 'Vous n\'êtes pas dans une partie'
+            });
+            return;
           }
+            // Si la partie n'est plus active (terminée), envoyer une réponse sans erreur
+          // if (!game.isActive) {
+          //   callback({
+          //     success: true,
+          //     result: { moved: false, gameOver: true },
+          //     message: 'La partie est terminée'
+          //   });
+          //   console.log("La partie est terminée !!!!!!");
+          //   return;
+          // }
 
           const player = game.players.get(socket.id);
 
-          if (!player || player.gameOver) {
-            throw new Error('Vous ne pouvez pas jouer');
-          }
+          // // Vérifier si le joueur existe
+          // if (!player) {
+          //   callback({
+          //     success: false,
+          //     error: 'Vous ne pouvez pas jouer'
+          //   });
+          //   return;
+          // }
 
-          let result = false;
+          // // Si le joueur est en game over, envoyer une réponse sans erreur
+          // if (player.gameOver) {
+          //   callback({
+          //     success: true,
+          //     result: { moved: false, gameOver: true },
+          //     message: 'Vous ne pouvez plus jouer, vous êtes éliminé'
+          //   });
+          //   return;
+          // }
+
+          let result;
 
           switch (direction) {
             case 'left':
@@ -254,20 +298,24 @@ export class SocketService {
               result = game.movePiece(player, 0, 1);
               break;
             case 'drop':
-              result = game.dropPiece(player) > 0;
+              result = game.dropPiece(player);
               break;
             case 'rotate':
               result = game.rotatePiece(player);
               break;
             default:
-              throw new Error('Direction invalide');
+              callback({
+                success: false,
+                error: 'Direction invalide'
+              });
+              return;
           }
 
           callback({ success: true, result });
 
-          // Marquer ce joueur comme étant le joueur courant pour le client
+          // Si le résultat contient des données de joueur mises à jour, les utiliser
           const playerState = {
-            ...player.getState(),
+            ...(result?.player || player.getState()),
             isCurrentPlayer: true
           };
 
@@ -281,21 +329,47 @@ export class SocketService {
           // Puis envoyer aux autres joueurs sans le marqueur isCurrentPlayer
           socket.to(game.id).emit('game:player_updated', {
             gameId: game.id,
-            player: player.getState()
+            player: result?.player || player.getState()
           });
 
-          // Vérifier si le jeu est terminé après ce mouvement
-          if (game.checkGameEnd()) {
-            // Envoyer les résultats du jeu
-            this.io.to(game.id).emit('game:over', {
-              gameId: game.id,
-              players: Array.from(game.players.values()).map(p => p.getState()),
-              endedAt: Date.now()
-            });
+          // Si le mouvement a provoqué un game over pour ce joueur, émettre l'événement immédiatement
+          if (result?.gameOver) {
+            console.log('Game over détecté pour le joueur', player.username, 'après un mouvement');
+
+            // Mettre à jour l'état de game over du joueur
+            player.gameOver = true;
+            player.isPlaying = false;
+
+            // Vérifier si c'est la fin du jeu pour tous les joueurs
+            if (game.checkGameEnd()) {
+              console.log('Émission de l\'événement game:over pour la partie', game.id, 'avec', game.players.size, 'joueurs');
+              console.log('État des joueurs:', Array.from(game.players.entries()).map(([id, p]) =>
+                `ID: ${id}, nom: ${p.username}, gameOver: ${p.gameOver}, isPlaying: ${p.isPlaying}`
+              ));
+
+              this.io.to(game.id).emit('game:over', {
+                gameId: game.id,
+                players: Array.from(game.players.values()).map(p => p.getState()),
+                endedAt: Date.now()
+              });
+            } else {
+              // Notifier uniquement le joueur en game over si la partie continue pour les autres
+              socket.emit('game:player_gameover', {
+                gameId: game.id,
+                player: {
+                  ...player.getState(),
+                  gameOver: true,
+                  isCurrentPlayer: true
+                }
+              });
+            }
           }
         } catch (error) {
           console.error('Erreur lors du mouvement:', error);
-          callback({ success: false, error: error.message });
+          callback({
+            success: false,
+            error: error.message || 'Erreur inconnue lors du mouvement'
+          });
         }
       });
 

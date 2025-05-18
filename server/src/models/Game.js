@@ -127,6 +127,7 @@ export class Game {
   /**
    * Fait apparaître une nouvelle pièce pour un joueur
    * @param {Player} player - Le joueur qui reçoit la pièce
+   * @returns {boolean} true si le joueur est en game over après cette opération
    */
   spawnPiece(player) {
     // Si pas de pièce suivante, en générer une
@@ -146,8 +147,13 @@ export class Game {
       player.isPlaying = false;
 
       // Vérifier si tous les joueurs sont en game over
-      this.checkGameEnd();
+      const isGameEnded = this.checkGameEnd();
+
+      // Retourner true pour indiquer que ce joueur est en game over
+      return true;
     }
+
+    return false;
   }
 
   /**
@@ -188,6 +194,7 @@ export class Game {
   /**
    * Verrouille la pièce en cours à sa position actuelle
    * @param {Player} player - Le joueur concerné
+   * @returns {Object} Résultat avec indication si le joueur est en game over après cette opération
    */
   lockPiece(player) {
     const piece = player.currentPiece;
@@ -209,8 +216,13 @@ export class Game {
     // Vérifier les lignes complètes
     this.checkLines(player);
 
-    // Faire apparaître une nouvelle pièce
-    this.spawnPiece(player);
+    // Faire apparaître une nouvelle pièce et vérifier si game over
+    const isGameOver = this.spawnPiece(player);
+
+    return {
+      isGameOver,
+      player: player.getState()
+    };
   }
 
   /**
@@ -245,35 +257,40 @@ export class Game {
    * @param {Player} player - Le joueur concerné
    * @param {number} dx - Déplacement horizontal
    * @param {number} dy - Déplacement vertical
-   * @returns {boolean} true si le déplacement a réussi, false sinon
+   * @returns {Object} Résultat du déplacement, incluant si le mouvement a réussi et si game over
    */
   movePiece(player, dx, dy) {
     if (!player.currentPiece || player.gameOver || !player.isPlaying) {
-      return false;
+      return { moved: false, gameOver: player.gameOver };
     }
 
     if (!this.checkCollision(player, player.currentPiece, dx, dy)) {
       player.currentPiece.x += dx;
       player.currentPiece.y += dy;
-      return true;
+      return { moved: true, gameOver: false };
     }
 
     // Si la pièce ne peut pas descendre, la verrouiller en place
     if (dy > 0) {
-      this.lockPiece(player);
+      const lockResult = this.lockPiece(player);
+      return {
+        moved: false,
+        gameOver: lockResult.isGameOver,
+        player: lockResult.player
+      };
     }
 
-    return false;
+    return { moved: false, gameOver: false };
   }
 
   /**
    * Fait tourner la pièce courante si possible
    * @param {Player} player - Le joueur concerné
-   * @returns {boolean} true si la rotation a réussi, false sinon
+   * @returns {Object} Résultat de la rotation, incluant si la rotation a réussi et si game over
    */
   rotatePiece(player) {
     if (!player.currentPiece || player.gameOver || !player.isPlaying) {
-      return false;
+      return { rotated: false, gameOver: player.gameOver };
     }
 
     // Créer une copie de la pièce et la faire tourner
@@ -283,20 +300,23 @@ export class Game {
     if (!this.checkCollision(player, rotatedPiece)) {
       // Appliquer la rotation
       player.currentPiece.rotate();
-      return true;
+      return { rotated: true, gameOver: false };
     }
 
-    return false;
+    return { rotated: false, gameOver: false };
   }
 
   /**
    * Fait chuter la pièce instantanément jusqu'en bas
    * @param {Player} player - Le joueur concerné
-   * @returns {number} Nombre de lignes descendues
+   * @returns {Object} Résultat du drop, incluant la distance descendue et si game over
    */
   dropPiece(player) {
     if (!player.currentPiece || player.gameOver || !player.isPlaying) {
-      return 0;
+      return {
+        dropped: 0,
+        gameOver: player.gameOver
+      };
     }
 
     let dropDistance = 0;
@@ -308,10 +328,18 @@ export class Game {
 
     if (dropDistance > 0) {
       player.currentPiece.y += dropDistance;
-      this.lockPiece(player);
+      const lockResult = this.lockPiece(player);
+      return {
+        dropped: dropDistance,
+        gameOver: lockResult.isGameOver,
+        player: lockResult.player
+      };
     }
 
-    return dropDistance;
+    return {
+      dropped: 0,
+      gameOver: false
+    };
   }
 
   /**
@@ -342,12 +370,21 @@ export class Game {
    * @returns {boolean} true si la partie est terminée
    */
   checkGameEnd() {
+    if (!this.isActive) {
+      return false; // Le jeu est déjà terminé, ne pas vérifier à nouveau
+    }
+
     // Vérifier si tous les joueurs sont en game over
     const allPlayersGameOver = [...this.players.values()].every(player =>
       player.gameOver || !player.isPlaying
     );
 
-    if (allPlayersGameOver && this.isActive) {
+    // Mode solo : si le joueur unique est en game over, terminer la partie
+    const isSoloGame = this.players.size === 1;
+    const soloPlayerGameOver = isSoloGame && [...this.players.values()][0]?.gameOver === true;
+
+    if ((allPlayersGameOver || soloPlayerGameOver) && this.isActive) {
+      console.log('GAME OVER - Tous les joueurs sont éliminés ou mode solo terminé');
       this.stop();
       return true;
     }

@@ -14,6 +14,7 @@ import {
   movePieceDown,
   rotatePiece,
   dropPiece,
+  autoDropPiece,
   resetGame
 } from '../features/gameSlice';
 
@@ -28,6 +29,7 @@ export function useGame() {
     error,
     gameResults
   } = useSelector(state => state.game);
+  const { user } = useSelector(state => state.auth);
 
   const getGames = async () => {
     dispatch(fetchGamesStart());
@@ -83,12 +85,27 @@ export function useGame() {
 
   const handleLeaveGame = async () => {
     try {
-      const response = await socketService.leaveGame();
-      if (response.success) {
-        dispatch(leaveGame());
+      // Enregistrer l'état actuel si c'est la fin de partie
+      const isGameOver = gameState && !gameState.isActive && Object.keys(gameState.playerStates || {}).length > 0;
+      const isCurrentPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
+
+      if (isGameOver || isCurrentPlayerGameOver) {
+        console.log('Enregistrement des résultats de fin de partie avant de quitter');
       }
+
+      // Tenter de quitter proprement en utilisant le socket
+      const response = await socketService.leaveGame();
+      console.log('Réponse de socketService.leaveGame:', response);
+
+      // Nettoyer l'état local quel que soit le résultat
+      dispatch(leaveGame());
+
+      // Retourner la réponse pour permettre au composant de décider quoi faire ensuite
       return response;
     } catch (error) {
+      console.error('Erreur lors de la tentative de quitter la partie:', error);
+      // Même en cas d'erreur, nettoyer l'état local
+      dispatch(leaveGame());
       return { success: false, error: error.message };
     }
   };
@@ -96,14 +113,74 @@ export function useGame() {
   const startGame = async () => {
     console.log("Hook useGame: appel de startGame");
     try {
-      const response = await socketService.startGame();
+      // Vérifier si le service socket est connecté
+      if (!socketService.isConnected) {
+        console.error("Impossible de démarrer la partie: socket non connecté");
+        return {
+          success: false,
+          error: "Connexion au serveur perdue. Veuillez rafraîchir la page et réessayer."
+        };
+      }
+
+      // Vérifier si l'utilisateur est authentifié
+      if (!socketService.isAuth) {
+        console.error("Impossible de démarrer la partie: utilisateur non authentifié");
+        return {
+          success: false,
+          error: "Vous n'êtes pas authentifié. Veuillez vous reconnecter."
+        };
+      }
+
+      // Vérifier si une partie est actuellement en cours
+      if (gameState?.isActive) {
+        console.error("Impossible de démarrer la partie: une partie est déjà en cours");
+        return {
+          success: false,
+          error: "Une partie est déjà en cours."
+        };
+      }
+
+      // Essai de démarrer la partie avec un timeout de 5 secondes
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Le serveur prend trop de temps à répondre")), 5000);
+      });
+
+      // Exécution de la requête avec un timeout
+      const response = await Promise.race([
+        socketService.startGame(),
+        timeoutPromise
+      ]);
+
       console.log("Hook useGame: réponse de socketService.startGame:", response);
+
+      // Vérifier si la réponse contient une erreur
+      if (response && !response.success) {
+        return {
+          success: false,
+          error: response.error || "Échec du démarrage de la partie"
+        };
+      }
+
       return { success: true, ...response };
     } catch (error) {
       console.error("Hook useGame: erreur lors du démarrage de la partie:", error);
+
+      // Gérer les différents types d'erreurs
+      let errorMessage = "Erreur inconnue lors du démarrage du jeu";
+
+      if (error.message.includes("timeout") || error.message.includes("trop de temps")) {
+        errorMessage = "Le serveur ne répond pas. Veuillez réessayer plus tard.";
+      } else if (error.message.includes("connexion") || error.message.includes("connect")) {
+        errorMessage = "Problème de connexion au serveur. Vérifiez votre connexion internet.";
+      } else if (error.error) {
+        errorMessage = error.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       return {
         success: false,
-        error: error.error || error.message || "Erreur inconnue lors du démarrage du jeu"
+        error: errorMessage
       };
     }
   };
@@ -133,10 +210,29 @@ export function useGame() {
     return socketService.movePiece('drop');
   }, [dispatch]);
 
+  const autoDrop = useCallback(async () => {
+    dispatch(autoDropPiece());
+    return socketService.movePiece('down', true);
+  }, [dispatch]);
+
   // Fonction pour réinitialiser le jeu (après une fin de partie)
   const handleResetGame = useCallback(() => {
     dispatch(resetGame());
   }, [dispatch]);
+
+  // Vérifier si le joueur actuel est en game over
+  const isCurrentPlayerGameOver = useCallback(() => {
+    if (!user || !user.id || !gameState?.playerStates) return false;
+    return gameState.playerStates[user.id]?.gameOver || false;
+  }, [gameState, user]);
+
+  // Vérifier si tous les joueurs sont en game over
+  const isAllPlayersGameOver = useCallback(() => {
+    if (!gameState?.playerStates) return false;
+
+    const playerStates = Object.values(gameState.playerStates);
+    return playerStates.length > 0 && playerStates.every(player => player.gameOver);
+  }, [gameState]);
 
   return {
     gamesList,
@@ -156,6 +252,9 @@ export function useGame() {
     moveDown,
     rotate,
     drop,
-    resetGame: handleResetGame
+    autoDrop,
+    resetGame: handleResetGame,
+    isCurrentPlayerGameOver,
+    isAllPlayersGameOver
   };
 }

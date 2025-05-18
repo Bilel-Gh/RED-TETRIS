@@ -53,7 +53,7 @@ const SHAPES = {
 };
 
 const NextPiece = ({ type }) => {
-  console.log('NextPiece - type reçu:', type);
+  // console.log('NextPiece - type reçu:', type);
 
   // Gestion du cas où type est un objet complet au lieu d'une simple chaîne
   let pieceType = type;
@@ -63,7 +63,7 @@ const NextPiece = ({ type }) => {
 
   // Vérifier si le type est une chaîne valide
   if (!pieceType || typeof pieceType !== 'string' || !SHAPES[pieceType]) {
-    console.log('Type de pièce invalide ou non défini:', pieceType);
+    // console.log('Type de pièce invalide ou non défini:', pieceType);
     return (
       <div className="next-piece-container">
         <h3>Prochaine pièce</h3>
@@ -79,7 +79,7 @@ const NextPiece = ({ type }) => {
   const shape = SHAPES[pieceType];
   const color = COLORS[pieceType];
 
-  console.log('NextPiece - affichage de la pièce:', pieceType);
+  // console.log('NextPiece - affichage de la pièce:', pieceType);
 
   return (
     <div className="next-piece-container">

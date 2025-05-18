@@ -13,7 +13,9 @@ import {
   playerJoined,
   playerLeft,
   updateGameState,
-  gameStarted
+  gameStarted,
+  gameOver,
+  playerGameOver
 } from '../features/gameSlice';
 
 // Socket instance
@@ -23,6 +25,9 @@ let isConnectionInProgress = false;
 // Variable pour suivre si le processus de connexion est en cours
 // pour éviter les connexions multiples simultanées
 let reconnectionTimer = null;
+
+// Variables pour stocker l'identifiant de l'utilisateur connecté
+let currentUserId = null;
 
 // Initialiser la connexion Socket
 const connect = (reduxStore) => {
@@ -130,6 +135,8 @@ const setupGameEvents = () => {
   socket.off('game:state_updated');
   socket.off('game:player_updated');
   socket.off('game:started');
+  socket.off('game:over');
+  socket.off('game:player_gameover');
   socket.off('user:joined');
   socket.off('user:left');
 
@@ -162,7 +169,7 @@ const setupGameEvents = () => {
 
   // Mise à jour de l'état d'un joueur (pièce, grille, etc.)
   socket.on('game:player_updated', (data) => {
-    console.log('Mise à jour de l\'état du joueur reçue:', data.player?.id);
+    // console.log('Mise à jour de l\'état du joueur reçue:', data.player?.id);
     store.dispatch(updateGameState(data));
   });
 
@@ -170,6 +177,19 @@ const setupGameEvents = () => {
   socket.on('game:started', (data) => {
     console.log('La partie a démarré, données initiales:', data);
     store.dispatch(gameStarted(data));
+  });
+
+  // La partie est terminée
+  socket.on('game:over', (data) => {
+    alert('GAME OVEEEEER', data);
+    console.log('La partie est terminée, résultats:', data);
+    store.dispatch(gameOver(data));
+  });
+
+  // Un joueur spécifique a perdu (game over individuel)
+  socket.on('game:player_gameover', (data) => {
+    console.log('Un joueur a perdu la partie:', data.player?.id);
+    store.dispatch(playerGameOver(data));
   });
 
   // Un utilisateur s'est connecté
@@ -224,36 +244,41 @@ const ensureConnection = () => {
   });
 };
 
-// Authentification d'un utilisateur
+// Login avec un nom d'utilisateur
 const login = async (username) => {
-  if (!username || username.trim() === '') {
-    return Promise.reject('Le nom d\'utilisateur ne peut pas être vide');
-  }
-
   try {
     await ensureConnection();
+    console.log("Tentative de connexion avec le nom d'utilisateur:", username);
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Délai d\'authentification dépassé'));
+        reject(new Error('Le serveur ne répond pas à la demande de connexion'));
       }, 5000);
 
       socket.emit('user:login', username, (response) => {
         clearTimeout(timeout);
 
         if (response && response.success) {
-          // Marquer le socket comme authentifié
           socket.auth = true;
+          // Stocker l'ID de l'utilisateur pour un accès ultérieur
+          currentUserId = response.user.id;
+
+          // Mise à jour du state Redux
           store.dispatch(loginSuccess(response.user));
-          resolve(response.user);
+          console.log("Connexion réussie, user ID:", currentUserId);
+          resolve(response);
         } else {
-          store.dispatch(loginFailure(response?.error || 'Erreur d\'authentification'));
-          reject(response?.error || 'Erreur d\'authentification');
+          console.error("Échec de la connexion:", response?.error || "Erreur inconnue");
+          reject({
+            success: false,
+            error: response?.error || "Échec de la connexion pour une raison inconnue"
+          });
         }
       });
     });
   } catch (error) {
-    store.dispatch(loginFailure(error.message || 'Erreur de connexion'));
+    console.error("Erreur lors de la connexion:", error);
+    store.dispatch(loginFailure(error.message || "Impossible de se connecter au serveur"));
     return Promise.reject(error);
   }
 };
@@ -385,30 +410,72 @@ const startGame = async () => {
   try {
     await ensureConnection();
 
-    console.log("Demande de démarrage du jeu");
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Délai de démarrage du jeu dépassé'));
-      }, 5000);
-
-      socket.emit('game:start', (response) => {
-        clearTimeout(timeout);
-
-        console.log("Réponse du démarrage du jeu:", response);
-        if (response && response.success) {
-          resolve({ success: true });
-        } else {
-          reject({ success: false, error: response?.error || "Erreur inconnue lors du démarrage" });
-        }
+    // Vérifier que le socket est bien connecté
+    if (!socket || !socket.connected) {
+      console.error("Impossible de démarrer la partie: socket non connecté");
+      return Promise.reject({
+        success: false,
+        error: "Connexion au serveur perdue. Veuillez rafraîchir la page."
       });
-    });
+    }
+
+    // Vérifier que l'utilisateur est bien authentifié
+    if (!socket.auth) {
+      console.error("Impossible de démarrer la partie: utilisateur non authentifié");
+      return Promise.reject({
+        success: false,
+        error: "Vous n'êtes pas authentifié. Veuillez vous reconnecter."
+      });
+    }
+
+    console.log("Demande de démarrage du jeu");
+
+    // Nombre maximum de tentatives
+    const maxRetries = 2;
+    let retryCount = 0;
+
+    const attemptStartGame = () => {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          if (retryCount < maxRetries) {
+            console.log(`Tentative de démarrage du jeu échouée (timeout), nouvel essai ${retryCount + 1}/${maxRetries}`);
+            retryCount++;
+            clearTimeout(timeout);
+            resolve(attemptStartGame()); // Réessayer
+          } else {
+            reject(new Error('Le serveur ne répond pas après plusieurs tentatives. Veuillez réessayer plus tard.'));
+          }
+        }, 3000); // Timeout plus court pour chaque tentative
+
+        socket.emit('game:start', (response) => {
+          clearTimeout(timeout);
+
+          console.log("Réponse du démarrage du jeu:", response);
+          if (response && response.success) {
+            resolve({ success: true });
+          } else {
+            // Si le serveur répond avec une erreur, ne pas réessayer
+            reject({
+              success: false,
+              error: response?.error || "Erreur inconnue lors du démarrage"
+            });
+          }
+        });
+      });
+    };
+
+    return attemptStartGame();
   } catch (error) {
-    return Promise.reject({ success: false, error: error.message || 'Erreur de connexion' });
+    console.error("Erreur critique lors du démarrage du jeu:", error);
+    return Promise.reject({
+      success: false,
+      error: error.message || 'Problème de connexion au serveur'
+    });
   }
 };
 
 // Déplacer une pièce
-const movePiece = async (direction) => {
+const movePiece = async (direction, isAutoMove = false) => {
   try {
     await ensureConnection();
 
@@ -417,31 +484,57 @@ const movePiece = async (direction) => {
       return { success: false, error: "Vous devez être connecté" };
     }
 
-    console.log(`Déplacement de la pièce: ${direction}`);
+    // Utiliser le paramètre isAutoMove au lieu de arguments
+    if (!isAutoMove) {
+      console.log(`Déplacement de la pièce: ${direction}`);
+    }
 
     // Traitement local immédiat pour un retour plus réactif
     let didMove = false;
 
     return new Promise((resolve) => {
       // Définir un timeout court pour éviter de bloquer l'interface
+      // Utiliser un timeout plus court pour les chutes automatiques
+      const timeoutDuration = isAutoMove ? 50 : 100;
+
       const timeout = setTimeout(() => {
         // Résoudre avec une réponse locale si le serveur ne répond pas assez vite
-        console.warn('Le serveur ne répond pas assez vite, utilisation du retour local');
+        if (!isAutoMove) {
+          console.warn('Le serveur ne répond pas assez vite, utilisation du retour local');
+        }
         resolve({
           success: true,
           result: { moved: didMove },
           warning: 'Réponse locale - le serveur ne répond pas assez vite'
         });
-      }, 100); // Timeout plus court pour une meilleure réactivité
+      }, timeoutDuration);
 
       socket.emit('game:move', direction, (response) => {
         clearTimeout(timeout);
 
         if (response && response.success) {
           didMove = true; // Marquer que le mouvement a été effectué
+
+          // Si le serveur indique que la partie est terminée ou que le joueur est éliminé
+          if (response.message) {
+            if (!isAutoMove) {
+              console.log(response.message);
+            }
+            return resolve({
+              success: true,
+              result: response.result || { moved: false },
+              message: response.message
+            });
+          }
+
           resolve({ success: true, result: response.result });
         } else {
-          console.error('Erreur lors du déplacement:', response?.error || 'Pas de réponse');
+          if (!isAutoMove) {
+            // Ne pas afficher d'erreur pour les parties terminées
+            if (response?.error && !response.error.includes('Partie non active')) {
+              console.error('Erreur lors du déplacement:', response?.error || 'Pas de réponse');
+            }
+          }
           resolve({ success: false, error: response?.error || 'Erreur inconnue' });
         }
       });
@@ -533,6 +626,7 @@ const socketService = {
   disconnect,
   testConnection,
   scheduleReconnection,
+  getUserId: () => currentUserId,
   get isAuth() {
     return socket && socket.auth;
   },
