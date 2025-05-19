@@ -327,14 +327,31 @@ export class SocketService {
             if (game.checkGameEnd()) {
               console.log('Émission de l\'événement game:over pour la partie', game.id, 'avec', game.players.size, 'joueurs');
               console.log('État des joueurs:', Array.from(game.players.entries()).map(([id, p]) =>
-                `ID: ${id}, nom: ${p.username}, gameOver: ${p.gameOver}, isPlaying: ${p.isPlaying}`
+                `ID: ${id}, nom: ${p.username}, gameOver: ${p.gameOver}, isPlaying: ${p.isPlaying}, isWinner: ${p.isWinner}`
               ));
 
-              this.io.to(game.id).emit('game:over', {
-                gameId: game.id,
-                players: Array.from(game.players.values()).map(p => p.getState()),
-                endedAt: Date.now()
-              });
+              // Récupérer les infos pour tous les joueurs
+              const playersInfo = Array.from(game.players.values()).map(p => p.getState());
+
+              // Envoyer un événement personnalisé à chaque joueur selon son statut
+              for (const player of game.players.values()) {
+                if (player.isWinner) {
+                  // Envoyer l'événement de victoire au gagnant
+                  this.io.to(player.id).emit('game:winner', {
+                    gameId: game.id,
+                    players: playersInfo,
+                    endedAt: Date.now()
+                  });
+                } else {
+                  // Envoyer l'événement de défaite aux autres joueurs
+                  this.io.to(player.id).emit('game:over', {
+                    gameId: game.id,
+                    players: playersInfo,
+                    winner: game.winner,
+                    endedAt: Date.now()
+                  });
+                }
+              }
             } else {
               // Notifier uniquement le joueur en game over si la partie continue pour les autres
               socket.emit('game:player_gameover', {

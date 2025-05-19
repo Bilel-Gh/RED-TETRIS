@@ -16,7 +16,8 @@ import {
   gameStarted,
   gameOver,
   playerGameOver,
-  penaltyApplied
+  penaltyApplied,
+  gameWinner
 } from '../features/gameSlice';
 
 // Socket instance
@@ -137,6 +138,7 @@ const setupGameEvents = () => {
   socket.off('game:player_updated');
   socket.off('game:started');
   socket.off('game:over');
+  socket.off('game:winner');
   socket.off('game:player_gameover');
   socket.off('game:penalty_applied');
   socket.off('user:joined');
@@ -188,11 +190,26 @@ const setupGameEvents = () => {
     store.dispatch(gameStarted(data));
   });
 
-  // La partie est terminée
+  // La partie est terminée (défaite)
   socket.on('game:over', (data) => {
-    alert('GAME OVEEEEER', data);
-    console.log('La partie est terminée, résultats:', data);
-    store.dispatch(gameOver(data));
+    console.log('La partie est terminée (défaite), résultats:', data);
+    setTimeout(() => {
+      store.dispatch(gameOver({
+        ...data,
+        isWinner: false
+      }));
+    }, 100);
+  });
+
+  // La partie est gagnée
+  socket.on('game:winner', (data) => {
+    console.log('Vous avez gagné la partie!', data);
+    setTimeout(() => {
+      store.dispatch(gameWinner({
+        ...data,
+        isWinner: true
+      }));
+    }, 100);
   });
 
   // Un joueur spécifique a perdu (game over individuel)

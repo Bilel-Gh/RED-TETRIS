@@ -573,29 +573,170 @@
 /* Notification de pénalité */
 .penalty-notification {
   position: fixed;
-  top: 50%;
+  top: 20%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(255, 50, 50, 0.85);
+  transform: translateX(-50%);
+  background-color: rgba(220, 0, 0, 0.9);
   color: white;
-  padding: 15px 30px;
-  border-radius: 8px;
-  font-size: 18px;
+  padding: 10px 20px;
+  border-radius: 5px;
   font-weight: bold;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  z-index: 100;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.7);
   animation: fadeInOut 3s ease-in-out;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .penalty-text {
+  font-size: 1.2rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  85% {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+}
+
+/* Styles pour le modal de Victoire */
+.victory-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-out;
+  pointer-events: auto !important;
+}
+
+.victory-modal {
+  background-color: #1a1a1a;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 0 30px rgba(46, 204, 113, 0.8);
+  overflow: hidden;
+  animation: victoryModalSlideIn 0.5s ease-out;
+  border: 2px solid #2ecc71;
+}
+
+.victory-modal-header {
+  background-color: #2ecc71;
+  padding: 20px;
   text-align: center;
 }
 
-/* Animation pour l'apparition/disparition */
-@keyframes fadeInOut {
-  0%, 100% { opacity: 0; }
-  10%, 90% { opacity: 1; }
+.victory-modal-header h2 {
+  margin: 0;
+  font-size: 2.5rem;
+  color: white;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 3px;
+  animation: pulse 1.5s infinite;
+}
+
+.victory-modal-content {
+  padding: 25px;
+  text-align: center;
+  background: linear-gradient(to bottom, #1a1a1a, #222);
+}
+
+.victory-modal-content p {
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  color: #f9f9f9;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.victory-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 20px 0;
+  background-color: rgba(46, 204, 113, 0.1);
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.victory-message {
+  font-size: 1.1rem;
+  color: #2ecc71;
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+.stat-victory {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #2ecc71;
+}
+
+.victory-modal-footer {
+  display: flex;
+  padding: 20px;
+  gap: 15px;
+  background-color: rgba(0, 0, 0, 0.2);
+  justify-content: center;
+}
+
+.victory-exit-btn {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  min-width: 180px;
+  background-color: #2ecc71;
+  color: white;
+}
+
+.victory-exit-btn:hover {
+  background-color: #27ae60;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes victoryModalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    text-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(46, 204, 113, 0.8), 0 0 30px rgba(46, 204, 113, 0.6);
+  }
+  100% {
+    text-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
+  }
 }

@@ -31,6 +31,28 @@ export const gameSlice = createSlice({
       state.status = 'succeeded';
       state.currentGame = action.payload;
       state.players = action.payload.players || [];
+
+      // Initialiser correctement l'état du jeu lors de la création
+      state.gameState = {
+        isActive: false,
+        startedAt: null,
+        isWinner: false,
+        winner: null,
+        playerStates: {}
+      };
+
+      // Initialiser l'état pour chaque joueur
+      if (action.payload.players) {
+        action.payload.players.forEach(player => {
+          if (player && player.id) {
+            state.gameState.playerStates[player.id] = {
+              ...player,
+              isWinner: false,
+              gameOver: false
+            };
+          }
+        });
+      }
     },
     createGameFailure: (state, action) => {
       state.status = 'failed';
@@ -121,23 +143,81 @@ export const gameSlice = createSlice({
       }
     },
     gameOver: (state, action) => {
+      console.log('REDUCER: gameOver reçu', action.payload);
+
       // Mettre à jour les informations de fin de jeu
       if (state.gameState) {
         state.gameState.isActive = false;
         state.gameState.endedAt = action.payload.endedAt;
+        state.gameState.isWinner = false;
+        state.gameState.winner = action.payload.winner;
+
+        // Stocker les joueurs pour des calculs ultérieurs
+        const allPlayers = [];
 
         // Mettre à jour les états individuels des joueurs
         if (action.payload.players) {
           action.payload.players.forEach(player => {
             if (state.gameState.playerStates && player.id) {
+              // Déterminer si ce joueur est le gagnant
+              const isWinner = player.id === action.payload.winner;
+
+              // Mettre à jour l'état du joueur
               state.gameState.playerStates[player.id] = {
                 ...state.gameState.playerStates[player.id],
                 ...player,
-                gameOver: true
+                gameOver: !isWinner, // Les perdants sont en game over
+                isWinner: isWinner   // Définir explicitement si c'est un gagnant
               };
+
+              allPlayers.push({
+                id: player.id,
+                isWinner,
+                gameOver: !isWinner
+              });
             }
           });
         }
+
+        console.log('État des joueurs après gameOver:', allPlayers);
+      }
+    },
+    gameWinner: (state, action) => {
+      console.log('REDUCER: gameWinner reçu', action.payload);
+
+      // Mettre à jour les informations de fin de jeu en cas de victoire
+      if (state.gameState) {
+        state.gameState.isActive = false;
+        state.gameState.endedAt = action.payload.endedAt;
+        state.gameState.isWinner = true;
+
+        // Stocker les joueurs pour des calculs ultérieurs
+        const allPlayers = [];
+
+        // Mettre à jour les états individuels des joueurs
+        if (action.payload.players) {
+          action.payload.players.forEach(player => {
+            if (state.gameState.playerStates && player.id) {
+              // Déterminer le statut du joueur basé sur isWinner
+              const isPlayerWinner = player.isWinner === true;
+
+              state.gameState.playerStates[player.id] = {
+                ...state.gameState.playerStates[player.id],
+                ...player,
+                gameOver: !isPlayerWinner,  // Seul le gagnant n'est pas en game over
+                isWinner: isPlayerWinner    // Conserver la propriété isWinner
+              };
+
+              allPlayers.push({
+                id: player.id,
+                isWinner: isPlayerWinner,
+                gameOver: !isPlayerWinner
+              });
+            }
+          });
+        }
+
+        console.log('État des joueurs après gameWinner:', allPlayers);
       }
     },
     penaltyApplied: (state, action) => {
@@ -155,6 +235,8 @@ export const gameSlice = createSlice({
       }
     },
     playerGameOver: (state, action) => {
+      console.log('REDUCER: playerGameOver reçu', action.payload);
+
       // Mettre à jour l'état du joueur qui a perdu
       if (state.gameState && state.gameState.playerStates && action.payload.player) {
         const playerId = action.payload.player.id;
@@ -163,10 +245,36 @@ export const gameSlice = createSlice({
         state.gameState.playerStates[playerId] = {
           ...state.gameState.playerStates[playerId],
           ...action.payload.player,
-          gameOver: true
+          gameOver: true,
+          isWinner: false  // Un joueur en game over n'est jamais un gagnant
         };
 
         console.log(`Joueur ${playerId} a perdu la partie. Mise à jour de l'état.`);
+
+        // Vérifier s'il reste un seul joueur actif (non game over), qui serait le gagnant
+        const activePlayers = Object.entries(state.gameState.playerStates)
+          .filter(([, playerState]) => !playerState.gameOver);
+
+        // S'il reste exactement un joueur actif, c'est le gagnant
+        if (activePlayers.length === 1) {
+          const winnerId = activePlayers[0][0];
+          console.log(`Un seul joueur actif: ${winnerId} est le gagnant`);
+
+          // Marquer ce joueur comme gagnant
+          state.gameState.playerStates[winnerId].isWinner = true;
+          state.gameState.winner = winnerId;
+        }
+
+        // Vérifier si tous les joueurs sont en game over
+        const allPlayersGameOver = Object.values(state.gameState.playerStates)
+          .every(player => player.gameOver);
+
+        // Si tous les joueurs sont en game over, marquer la partie comme terminée
+        if (allPlayersGameOver) {
+          console.log('Tous les joueurs sont en game over, la partie est terminée');
+          state.gameState.isActive = false;
+          state.gameState.endedAt = Date.now();
+        }
       }
     },
     gameStarted: (state, action) => {
@@ -185,6 +293,17 @@ export const gameSlice = createSlice({
         if (!state.gameState.playerStates) {
           state.gameState.playerStates = {};
         }
+
+        // S'assurer qu'aucun joueur n'est marqué comme gagnant au démarrage
+        state.gameState.isWinner = false;
+        state.gameState.winner = null;
+
+        // Réinitialiser le statut de gagnant pour chaque joueur
+        Object.keys(state.gameState.playerStates).forEach(playerId => {
+          if (state.gameState.playerStates[playerId]) {
+            state.gameState.playerStates[playerId].isWinner = false;
+          }
+        });
 
         // si le joueur est seul, on met à jour l'état du jeu
         if (action.payload.initialState.players.length === 1) {
@@ -272,6 +391,7 @@ export const {
   gameOver,
   playerGameOver,
   penaltyApplied,
+  gameWinner,
   gameStarted,
   movePieceLeft,
   movePieceRight,

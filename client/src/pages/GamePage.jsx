@@ -33,6 +33,7 @@ const GamePage = () => {
   const [isStartingGame, setIsStartingGame] = useState(false);
   const [startGameError, setStartGameError] = useState(null);
   const [showGameOverModal, setShowGameOverModal] = useState(false);
+  const [showVictoryModal, setShowVictoryModal] = useState(false);
 
   // Gestionnaire d'événements clavier
   const handleKeyDown = useCallback((e) => {
@@ -42,7 +43,9 @@ const GamePage = () => {
     }
 
     // Vérifier si le jeu est actif et que le joueur n'est pas en game over
-    const isCurrentPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
+    const playerState = gameState?.playerStates?.[user?.id];
+    const isCurrentPlayerGameOver = !!playerState?.gameOver;
+
     if (!gameState || !gameState.isActive || isCurrentPlayerGameOver || !keyEnabled) {
       return;
     }
@@ -199,20 +202,6 @@ const GamePage = () => {
   // Détecter si le jeu est terminé (pas d'activité)
   const isGameOver = !gameState?.isActive && gameState?.playerStates && Object.keys(gameState.playerStates).length > 0;
 
-  // Détecter si le joueur actuel est éliminé
-  const isCurrentPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
-
-  // Vérifier si le joueur vient de perdre pour afficher le modal
-  useEffect(() => {
-    console.log('isCurrentPlayerGameOver:', isCurrentPlayerGameOver);
-
-    // Si le joueur a perdu, afficher la modal
-    if (isCurrentPlayerGameOver) {
-      console.log('Affichage de la modal Game Over');
-      setShowGameOverModal(true);
-    }
-  }, [isCurrentPlayerGameOver]);
-
   // Déterminer le nombre de joueurs encore en jeu
   const activePlayers = gameState?.playerStates ?
     Object.values(gameState.playerStates).filter(p => !p.gameOver).length :
@@ -223,22 +212,12 @@ const GamePage = () => {
   // Pour le débogage - afficher les états du jeu
   useEffect(() => {
     if (gameState && user) {
-      // const playerState = gameState.playerStates?.[user.id];
-      // console.log('États du jeu:', {
-      //   isSoloGame,
-      //   isGameOver,
-      //   isCurrentPlayerGameOver,
-      //   showGameOverModal,
-      //   activePlayers,
-      //   'playerState': playerState
-      // });
       console.log('showGameOverModal', showGameOverModal);
-      console.log('isCurrentPlayerGameOver', isCurrentPlayerGameOver);
       console.log('isGameOver', isGameOver);
       console.log('activePlayers', activePlayers);
-      console.log('GAME OVER', gameState.playerStates);
+      console.log('GAME STATE', gameState.playerStates);
     }
-  }, [gameState, isGameOver, isCurrentPlayerGameOver, showGameOverModal, activePlayers, isSoloGame, user]);
+  }, [gameState, isGameOver, showGameOverModal, activePlayers, isSoloGame, user]);
 
   // Générer l'URL de partage avec le nouveau format
   const generateShareUrl = () => {
@@ -249,12 +228,54 @@ const GamePage = () => {
     return `${window.location.origin}/${roomName}/${encodeURIComponent(user.username)}`;
   };
 
-  // Pour le débogage de l'état du jeu
-  // useEffect(() => {
-  //   if (gameState) {
-  //     console.log('État actuel du jeu:', gameState);
-  //   }
-  // }, [gameState]);
+  // Vérifier si le joueur doit voir une modale de fin de jeu
+  useEffect(() => {
+    // Vérifier que nous avons toutes les données nécessaires
+    if (!gameState || !user?.id || !gameState.playerStates?.[user.id]) {
+      return;
+    }
+
+    // Récupérer l'état du joueur actuel
+    const playerState = gameState.playerStates[user.id];
+
+    // Ajouter des logs détaillés pour le débogage
+    console.log('Information modales:', {
+      isActive: gameState.isActive,
+      hasStarted: !!gameState.startedAt,
+      gameOver: playerState.gameOver,
+      isWinner: playerState.isWinner,
+      userId: user.id,
+      activePlayers: Object.values(gameState.playerStates).filter(p => !p.gameOver).length
+    });
+
+    // Condition pour afficher la modale de victoire:
+    // 1. Le jeu a été actif (startedAt existe)
+    // 2. Le jeu est maintenant inactif ou le joueur est marqué comme gagnant
+    // 3. Le joueur est explicitement marqué comme gagnant
+    if (gameState.startedAt && playerState.isWinner === true) {
+      console.log('MODAL: Victoire pour', user.id);
+      setShowVictoryModal(true);
+      setShowGameOverModal(false);
+      return;
+    }
+
+    // Condition pour afficher la modale de défaite:
+    // 1. Le jeu a été actif (startedAt existe)
+    // 2. Le joueur est explicitement marqué comme éliminé (gameOver)
+    if (gameState.startedAt && playerState.gameOver === true) {
+      console.log('MODAL: Game Over pour', user.id);
+      setShowGameOverModal(true);
+      setShowVictoryModal(false);
+      return;
+    }
+
+    // Sinon, cacher les deux modales
+    if (showGameOverModal || showVictoryModal) {
+      console.log('MODAL: Aucune modale nécessaire');
+      setShowGameOverModal(false);
+      setShowVictoryModal(false);
+    }
+  }, [gameState, user, showGameOverModal, showVictoryModal]);
 
   return (
     <PageTransition>
@@ -338,7 +359,7 @@ const GamePage = () => {
                   <div className="action-feedback">{actionFeedback}</div>
                 )}
 
-                {activePlayers === 1 && !isCurrentPlayerGameOver && (
+                {activePlayers === 1 && gameState?.playerStates?.[user?.id] && !gameState.playerStates[user.id].gameOver && (
                   <>
                     <div className="winner-message">
                       {isSoloGame ? "Vous êtes dans une partie solo !" : "Vous êtes le dernier survivant! Victoire!"}
@@ -352,7 +373,7 @@ const GamePage = () => {
                   </>
                 )}
 
-                {isGameOver && !isCurrentPlayerGameOver && (
+                {isGameOver && gameState?.playerStates?.[user?.id] && !gameState.playerStates[user.id].gameOver && (
                   <>
                     <div className="game-over-message">
                       La partie est terminée!
@@ -446,12 +467,12 @@ const GamePage = () => {
           </div>
         )}
 
-        {/* Modal de Game Over pour le joueur actuel */}
-        {showGameOverModal && isCurrentPlayerGameOver && (
+        {/* Modal de Game Over pour le joueur éliminé */}
+        {showGameOverModal && (
           <div className="game-over-modal-overlay">
             <div className="game-over-modal">
               <div className="game-over-modal-header">
-                <h2>GAME OVER {isGameOver ? 'true' : 'false'}</h2>
+                <h2>GAME OVER</h2>
               </div>
               <div className="game-over-modal-content">
                 <p>{isSoloGame ? "Partie Solo Terminée !" : "Vous avez perdu cette partie !"}</p>
@@ -489,6 +510,45 @@ const GamePage = () => {
                 )}
                 <button
                   className="game-over-exit-btn"
+                  onClick={handleLeave}
+                >
+                  Quitter la partie
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Victoire pour le gagnant */}
+        {showVictoryModal && (
+          <div className="victory-modal-overlay">
+            <div className="victory-modal">
+              <div className="victory-modal-header">
+                <h2>VICTOIRE!</h2>
+              </div>
+              <div className="victory-modal-content">
+                <p>Félicitations! Vous êtes le dernier survivant!</p>
+                <div className="victory-stats">
+                  <div className="stat-result">
+                    <span className="stat-label">Score final</span>
+                    <span className="stat-victory">{gameState?.playerStates?.[user?.id]?.score || 0}</span>
+                  </div>
+                  <div className="stat-result">
+                    <span className="stat-label">Niveau atteint</span>
+                    <span className="stat-victory">{gameState?.playerStates?.[user?.id]?.level || 1}</span>
+                  </div>
+                  <div className="stat-result">
+                    <span className="stat-label">Lignes éliminées</span>
+                    <span className="stat-victory">{gameState?.playerStates?.[user?.id]?.lines || 0}</span>
+                  </div>
+                </div>
+                <p className="victory-message">
+                  Vous avez battu tous vos adversaires!
+                </p>
+              </div>
+              <div className="victory-modal-footer">
+                <button
+                  className="victory-exit-btn"
                   onClick={handleLeave}
                 >
                   Quitter la partie

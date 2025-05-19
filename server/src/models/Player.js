@@ -17,6 +17,7 @@ export class Player {
     this.lines = 0;
     this.isPlaying = false;
     this.gameOver = false;
+    this.isWinner = false;
     this.joinedAt = Date.now(); // Horodatage d'arrivée du joueur
     this.finalScore = 0; // Score final quand la partie se termine
     this.finalLevel = 0; // Niveau final quand la partie se termine
@@ -68,6 +69,7 @@ export class Player {
     this.level = 1;
     this.lines = 0;
     this.gameOver = false;
+    this.isWinner = false;
     this.finalScore = 0;
     this.finalLevel = 0;
     this.grid = this.createEmptyGrid();
@@ -180,6 +182,7 @@ export class Player {
       } : null,
       isPlaying: this.isPlaying,
       gameOver: this.gameOver,
+      isWinner: this.isWinner || false,
       finalScore: this.finalScore || this.score, // Utiliser le score actuel par défaut
       finalLevel: this.finalLevel || this.level,  // Utiliser le niveau actuel par défaut
       spectrum: this.spectrum // Ajout du spectre pour la visualisation des adversaires

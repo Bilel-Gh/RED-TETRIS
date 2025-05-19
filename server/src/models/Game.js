@@ -245,24 +245,14 @@ export class Game {
 
     // Vérifier les lignes complètes et compter leur nombre avant de les supprimer
     let linesCleared = 0;
-    for (let y = player.grid.length - 1; y >= 0; y--) {
-      if (player.grid[y].every(cell => cell !== 0)) {
-        linesCleared++;
-      }
-    }
-
-    // Variable pour suivre si des pénalités ont été appliquées
     let penaltyApplied = false;
     let penaltyLines = 0;
 
     // Vérifier les lignes complètes et mettre à jour le score
-    this.checkLines(player);
-
-    // Si des lignes ont été éliminées (2+), appliquer des pénalités aux autres joueurs
-    if (linesCleared >= 2 && this.players.size > 1) {
-      penaltyApplied = true;
-      penaltyLines = linesCleared - 1;
-    }
+    const checkLinesResult = this.checkLines(player);
+    linesCleared = checkLinesResult.linesCleared;
+    penaltyApplied = checkLinesResult.penaltyApplied;
+    penaltyLines = checkLinesResult.penaltyLines;
 
     // Faire apparaître une nouvelle pièce et vérifier si game over
     const isGameOver = this.spawnPiece(player);
@@ -279,6 +269,7 @@ export class Game {
   /**
    * Vérifie et supprime les lignes complètes
    * @param {Player} player - Le joueur concerné
+   * @returns {Object} Résultat contenant le nombre de lignes supprimées et si des pénalités ont été appliquées
    */
   checkLines(player) {
     let linesCleared = 0;
@@ -302,9 +293,9 @@ export class Game {
       player.addLines(linesCleared);
 
       // Si au moins 2 lignes ont été éliminées, appliquer des pénalités aux adversaires
-      if (linesCleared >= 2 && this.players.size > 1) {
+      if (linesCleared > 0 && this.players.size > 1) {
         // Nombre de lignes de pénalité = lignes éliminées - 1
-        const penaltyLines = linesCleared - 1;
+        const penaltyLines = Math.max(1, linesCleared - 1);
 
         // Ajouter des lignes de pénalité à tous les autres joueurs
         for (const [playerId, otherPlayer] of this.players.entries()) {
@@ -312,8 +303,20 @@ export class Game {
             this.addPenaltyLines(otherPlayer, penaltyLines);
           }
         }
+
+        // Retourner les informations sur les pénalités appliquées
+        return {
+          linesCleared,
+          penaltyApplied: true,
+          penaltyLines
+        };
       }
     }
+
+    return {
+      linesCleared,
+      penaltyApplied: false
+    };
   }
 
   /**
@@ -484,6 +487,19 @@ export class Game {
     const isSoloGame = this.players.size === 1;
     const soloPlayerGameOver = isSoloGame && [...this.players.values()][0]?.gameOver === true;
 
+    // Identifier le gagnant (dernier joueur non éliminé) s'il y a plus d'un joueur
+    if (!isSoloGame && this.isActive) {
+      const activePlayers = [...this.players.values()].filter(player => !player.gameOver && player.isPlaying);
+
+      // S'il ne reste qu'un seul joueur actif, c'est le gagnant
+      if (activePlayers.length === 1) {
+        const winner = activePlayers[0];
+        console.log(`Joueur ${winner.username} (${winner.id}) est le dernier survivant et gagne la partie!`);
+        this.winner = winner.id;
+        winner.isWinner = true;
+      }
+    }
+
     if ((allPlayersGameOver || soloPlayerGameOver) && this.isActive) {
       console.log('GAME OVER - Tous les joueurs sont éliminés ou mode solo terminé');
       this.stop();
@@ -505,7 +521,8 @@ export class Game {
       isActive: this.isActive,
       host: this.host,
       createdAt: this.createdAt,
-      startedAt: this.startedAt
+      startedAt: this.startedAt,
+      winner: this.winner || null
     };
   }
 }

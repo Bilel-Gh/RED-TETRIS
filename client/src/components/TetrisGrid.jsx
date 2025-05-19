@@ -12,7 +12,7 @@ const COLORS = {
   'Z': 'cell-z',
   'J': 'cell-j',
   'L': 'cell-l',
-  'X': 'cell-indestructible', // Ligne indestructible
+  'penalty': 'cell-penalty', // Ligne de pénalité indestructible
   '0': 'cell-empty', // Cellule vide
 };
 
@@ -28,6 +28,23 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   const [displayGrid, setDisplayGrid] = useState(defaultGrid);
   const [fallingCells, setFallingCells] = useState([]);
   const autoDropIntervalRef = useRef(null);
+  const [isPenaltyShaking, setIsPenaltyShaking] = useState(false);
+
+  // Surveiller les pénalités pour ajouter un effet de secousse
+  useEffect(() => {
+    if (gameState?.lastPenalty &&
+        gameState.lastPenalty.timestamp &&
+        Date.now() - gameState.lastPenalty.timestamp < 1000 &&
+        gameState.lastPenalty.fromPlayer !== user?.id) {
+      // Déclencher l'effet de secousse
+      setIsPenaltyShaking(true);
+
+      // Arrêter l'effet après un court délai
+      setTimeout(() => {
+        setIsPenaltyShaking(false);
+      }, 1000);
+    }
+  }, [gameState?.lastPenalty, user?.id]);
 
   // Utiliser la grille fournie ou la grille par défaut
   const baseGrid = grid || defaultGrid;
@@ -36,7 +53,7 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   useEffect(() => {
     // Vérifier si le joueur est en game over ou si la partie est inactive
     const isGameActive = gameState?.isActive;
-    const isPlayerGameOver = gameState?.playerStates?.[Object.keys(gameState?.playerStates || {})[0]]?.gameOver;
+    const isPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
 
     // Si le jeu n'est pas actif ou si le joueur est en game over, ne pas configurer la chute automatique
     if (!currentPiece || !isGameActive || isPlayerGameOver) {
@@ -71,7 +88,7 @@ const TetrisGrid = ({ grid, currentPiece }) => {
       // Vérifier à nouveau avant chaque chute que le jeu est toujours actif
       const currentGameState = gameState;
       const isStillActive = currentGameState?.isActive;
-      const isNowGameOver = currentGameState?.playerStates?.[Object.keys(currentGameState?.playerStates || {})[0]]?.gameOver;
+      const isNowGameOver = currentGameState?.playerStates?.[user?.id]?.gameOver;
 
       if (isStillActive && !isNowGameOver) {
         autoDrop();
@@ -90,7 +107,7 @@ const TetrisGrid = ({ grid, currentPiece }) => {
         clearInterval(autoDropIntervalRef.current);
       }
     };
-  }, [currentPiece, autoDrop, gameState]);
+  }, [currentPiece, autoDrop, gameState, user?.id]);
 
   // Mettre à jour la grille avec la pièce courante
   useEffect(() => {
@@ -217,7 +234,7 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   }, [isPlayerGameOver, playerState]);
 
   return (
-    <div className={`tetris-grid-container ${isPlayerGameOver ? 'game-over' : ''}`}>
+    <div className={`tetris-grid-container ${isPlayerGameOver ? 'game-over' : ''} ${isPenaltyShaking ? 'penalty-shake' : ''}`}>
       <div className="tetris-grid">
         {renderGrid()}
       </div>

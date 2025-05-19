@@ -222,8 +222,18 @@ export function useGame() {
 
   // Vérifier si le joueur actuel est en game over
   const isCurrentPlayerGameOver = useCallback(() => {
-    if (!user || !user.id || !gameState?.playerStates) return false;
-    return gameState.playerStates[user.id]?.gameOver || false;
+    if (!user || !user.id || !gameState?.playerStates?.[user.id]) {
+      return false;
+    }
+    return gameState.playerStates[user.id].gameOver === true;
+  }, [gameState, user]);
+
+  // Vérifier si le joueur actuel est le gagnant
+  const isCurrentPlayerWinner = useCallback(() => {
+    if (!user || !user.id || !gameState?.playerStates?.[user.id]) {
+      return false;
+    }
+    return gameState.playerStates[user.id].isWinner === true;
   }, [gameState, user]);
 
   // Vérifier si tous les joueurs sont en game over
@@ -255,6 +265,7 @@ export function useGame() {
     autoDrop,
     resetGame: handleResetGame,
     isCurrentPlayerGameOver,
+    isCurrentPlayerWinner,
     isAllPlayersGameOver
   };
 }
