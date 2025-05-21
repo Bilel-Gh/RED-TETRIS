@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useGame } from '../hooks/useGame';
 import { useSelector } from 'react-redux';
 import './Tetris.css';
@@ -16,6 +16,50 @@ const COLORS = {
   '0': 'cell-empty', // Cellule vide
 };
 
+// Optimiser les cellules avec React.memo pour éviter les re-renders inutiles
+const GridCell = React.memo(({ type, isActive, isFalling, rowIndex, colIndex }) => {
+  return (
+    <div
+      className={`
+        grid-cell
+        ${COLORS[type] || COLORS['0']}
+        ${isActive ? 'active-cell' : ''}
+        ${isFalling ? 'falling-piece' : ''}
+      `}
+      data-row={rowIndex}
+      data-col={colIndex}
+      data-type={type}
+    />
+  );
+});
+
+// Optimiser les lignes de la grille
+const GridRow = React.memo(({ row, rowIndex, currentPiece, fallingCells }) => {
+  return (
+    <div className="grid-row">
+      {row.map((cell, colIndex) => {
+        const isCellFalling = fallingCells.includes(`${rowIndex}-${colIndex}`);
+        const isCellActive = currentPiece &&
+                             colIndex >= currentPiece.x &&
+                             colIndex < currentPiece.x + (currentPiece.shape[0]?.length || 0) &&
+                             rowIndex >= currentPiece.y &&
+                             rowIndex < currentPiece.y + (currentPiece.shape?.length || 0);
+
+        return (
+          <GridCell
+            key={`cell-${rowIndex}-${colIndex}`}
+            type={cell}
+            isActive={isCellActive}
+            isFalling={isCellFalling}
+            rowIndex={rowIndex}
+            colIndex={colIndex}
+          />
+        );
+      })}
+    </div>
+  );
+});
+
 const TetrisGrid = ({ grid, currentPiece }) => {
   const { autoDrop } = useGame();
   const { gameState } = useSelector(state => state.game);
@@ -32,10 +76,13 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   const displayGridRef = useRef(defaultGrid);
   const fallingCellsRef = useRef([]);
   const autoDropIntervalRef = useRef(null);
+  const lastUpdateTimeRef = useRef(0);
+  const FPS_CAP = 60; // Limiter à 60 FPS pour une animation fluide mais efficace
 
   // States that trigger renders
   const [isPenaltyShaking, setIsPenaltyShaking] = useState(false);
-  const [forceRender, setForceRender] = useState(0);
+  const [displayGrid, setDisplayGrid] = useState(defaultGrid);
+  const [activeFallingCells, setActiveFallingCells] = useState([]);
 
   // Surveiller les pénalités pour ajouter un effet de secousse
   useEffect(() => {
@@ -115,12 +162,7 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   }, [currentPiece, autoDrop, gameState, user?.id]);
 
   // Function to update the grid without state setters
-  const updateGrid = () => {
-    // Skip update if game isn't active
-    if (!gameState?.isActive || gameState?.playerStates?.[user?.id]?.gameOver) {
-      return false;
-    }
-
+  const updateGrid = useCallback(() => {
     // Créer une copie profonde de la grille
     const newGrid = baseGrid.map(row => [...row]);
     const newFallingCells = [];
@@ -167,21 +209,23 @@ const TetrisGrid = ({ grid, currentPiece }) => {
       }
     }
 
-    // Update refs without triggering re-renders
+    // Update refs
     displayGridRef.current = newGrid;
     fallingCellsRef.current = newFallingCells;
+
+    // Update state (optimized to reduce renders)
+    setDisplayGrid(newGrid);
+    setActiveFallingCells(newFallingCells);
+
     return true;
-  };
+  }, [baseGrid, currentPiece]);
 
   // Set up the initial grid rendering
   useEffect(() => {
-    if (updateGrid()) {
-      // Force a re-render to show the updated grid
-      setForceRender(prev => prev + 1);
-    }
-  }, [baseGrid, currentPiece, gameState?.isActive, user?.id]);
+    updateGrid();
+  }, [baseGrid, currentPiece, updateGrid]);
 
-  // Handle animation frame updates
+  // Handle animation frame updates with controlled FPS
   useEffect(() => {
     // Vérifier si le jeu est actif avant toute mise à jour
     if (!gameState?.isActive || gameState?.playerStates?.[user?.id]?.gameOver) {
@@ -193,13 +237,13 @@ const TetrisGrid = ({ grid, currentPiece }) => {
       return;
     }
 
-    const animationLoop = () => {
-      if (updateGrid()) {
-        // Force re-render once every 10 frames to reduce UI updates
-        if (Math.random() < 0.1) {
-          setForceRender(prev => prev + 1);
-        }
+    const animationLoop = (timestamp) => {
+      // Limiter les FPS pour une meilleure performance
+      if (!lastUpdateTimeRef.current || timestamp - lastUpdateTimeRef.current >= (1000 / FPS_CAP)) {
+        lastUpdateTimeRef.current = timestamp;
+        updateGrid();
       }
+
       animationFrameRef.current = requestAnimationFrame(animationLoop);
     };
 
@@ -215,39 +259,7 @@ const TetrisGrid = ({ grid, currentPiece }) => {
         animationFrameRef.current = null;
       }
     };
-  }, [currentPiece, gameState?.isActive, user?.id]);
-
-  // Dessiner la grille
-  const renderGrid = () => {
-    // Use the grid from ref rather than state
-    return displayGridRef.current.map((row, rowIndex) => (
-      <div key={`row-${rowIndex}`} className="grid-row">
-        {row.map((cell, colIndex) => {
-          const isCellFalling = fallingCellsRef.current.includes(`${rowIndex}-${colIndex}`);
-          const isCellActive = currentPiece &&
-                               colIndex >= currentPiece.x &&
-                               colIndex < currentPiece.x + (currentPiece.shape[0]?.length || 0) &&
-                               rowIndex >= currentPiece.y &&
-                               rowIndex < currentPiece.y + (currentPiece.shape?.length || 0);
-
-          return (
-            <div
-              key={`cell-${rowIndex}-${colIndex}`}
-              className={`
-                grid-cell
-                ${COLORS[cell] || COLORS['0']}
-                ${isCellActive ? 'active-cell' : ''}
-                ${isCellFalling ? 'falling-piece' : ''}
-              `}
-              data-row={rowIndex}
-              data-col={colIndex}
-              data-type={cell}
-            />
-          );
-        })}
-      </div>
-    ));
-  };
+  }, [currentPiece, gameState?.isActive, user?.id, updateGrid]);
 
   // Vérifier si le joueur actuel est en game over
   const isPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
@@ -264,7 +276,15 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   return (
     <div className={`tetris-grid-container ${isPlayerGameOver ? 'game-over' : ''} ${isPenaltyShaking ? 'penalty-shake' : ''}`}>
       <div className="tetris-grid">
-        {renderGrid()}
+        {displayGrid.map((row, rowIndex) => (
+          <GridRow
+            key={`row-${rowIndex}`}
+            row={row}
+            rowIndex={rowIndex}
+            currentPiece={currentPiece}
+            fallingCells={activeFallingCells}
+          />
+        ))}
       </div>
       {isPlayerGameOver && (
         <div className="game-over-overlay">

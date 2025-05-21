@@ -216,7 +216,7 @@ const GamePage = () => {
 
   // Log activePlayers only when it changes to avoid console spam
   useEffect(() => {
-    console.log('activePlayers dans le GamePage:', activePlayers);
+  console.log('activePlayers dans le GamePage:', activePlayers);
     console.log('playerStates:', gameState?.playerStates ?
       Object.entries(gameState.playerStates).map(([id, p]) =>
         `${id}: gameOver=${p.gameOver}, isWinner=${p.isWinner}`

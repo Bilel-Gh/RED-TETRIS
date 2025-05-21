@@ -109,34 +109,22 @@ export const gameSlice = createSlice({
             level: action.payload.player.level,
             lines: action.payload.player.lines
           });
+
+          // // Afficher les informations de débogage pour les pièces
+          // if (action.payload.player.currentPiece) {
+          //   console.log('Pièce courante actualisée:', action.payload.player.currentPiece);
+          // }
+
+          // if (action.payload.player.nextPiece) {
+          //   console.log('Prochaine pièce actualisée:', action.payload.player.nextPiece);
+          // }
         }
       } else {
         // Mise à jour directe de l'état complet du jeu
-
-        // Si nous recevons un nouvel état de jeu complet, conservons les anciens playerStates
-        // si le nouveau ne les spécifie pas
-        if (state.gameState && state.gameState.playerStates &&
-            action.payload && !action.payload.playerStates) {
-          action.payload.playerStates = state.gameState.playerStates;
-        }
-
         state.gameState = action.payload;
 
-        // Synchroniser les players avec playerStates pour éviter les incohérences
-        if (action.payload.players && state.gameState.playerStates) {
-          // S'assurer que chaque joueur dans players a une entrée dans playerStates
-          const playerIds = action.payload.players.map(p => p.id);
-
-          // Supprimer les joueurs qui ne sont plus dans la liste des joueurs
-          Object.keys(state.gameState.playerStates).forEach(id => {
-            if (!playerIds.includes(id)) {
-              delete state.gameState.playerStates[id];
-            }
-          });
-
-          // Mettre à jour la liste des joueurs dans state.players
-          state.players = action.payload.players;
-        }
+        // // Afficher les informations de débogage pour l'état du jeu
+        // console.log('État complet du jeu mis à jour:', state.gameState);
       }
     },
     updatePlayers: (state, action) => {
@@ -150,43 +138,20 @@ export const gameSlice = createSlice({
     playerLeft: (state, action) => {
       console.log('REDUCER: playerLeft reçu', action.payload);
       console.log('state.players :', state.players);
-
-      // Mettre à jour la liste des joueurs
       state.players = state.players.filter(p => p.id !== action.payload.id);
       console.log('state.players après filtrage :', state.players);
-
-      // Remove the player from playerStates as well
-      if (state.gameState && state.gameState.playerStates) {
-        delete state.gameState.playerStates[action.payload.id];
-      } else {
-        console.log('state.gameState.playerStates n\'existe pas');
-      }
 
       // vérifier si il reste des joueurs dans la partie
       if (state.players.length === 1) {
         console.log('il reste un seul joueur dans la partie, la partie est terminée');
         // mettre ce joueur en winner
-        if (state.gameState && state.gameState.playerStates) {
-          const remainingPlayerId = state.players[0].id;
-
-          // S'assurer que le joueur restant existe dans playerStates
-          if (!state.gameState.playerStates[remainingPlayerId]) {
-            state.gameState.playerStates[remainingPlayerId] = {
-              id: remainingPlayerId,
-              username: state.players[0].username,
-              gameOver: false
-            };
-          }
-
-          state.gameState.playerStates[remainingPlayerId].isWinner = true;
-          state.gameState.isActive = false;
-          state.gameState.endedAt = Date.now();
-          state.gameState.winner = remainingPlayerId;
-          state.gameState.isWinner = true;
-
-          // console log les joueurs et tout leurs etats
-          console.log('state.gameState.playerStates dans playerLeft:', state.gameState.playerStates);
-        }
+        state.gameState.playerStates[state.players[0].id].isWinner = true;
+        state.gameState.isActive = false;
+        state.gameState.endedAt = Date.now();
+        state.gameState.winner = state.players[0].id;
+        state.gameState.isWinner = true;
+        // console log les joueurs et tout leurs etats
+        console.log('state.gameState.playerStates dans playerLeft:', state.gameState.playerStates);
       } else {
         console.log('il reste des joueurs dans la partie, la partie continue');
       }
