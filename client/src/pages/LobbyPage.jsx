@@ -13,6 +13,7 @@ const LobbyPage = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [roomName, setRoomName] = useState('');
+  const [fallSpeedSetting, setFallSpeedSetting] = useState('normal');
   const [error, setError] = useState('');
 
   const loadGames = async () => {
@@ -37,7 +38,7 @@ const LobbyPage = () => {
 
     setIsLoading(true);
     try {
-      const result = await createGame(roomName);
+      const result = await createGame(roomName, fallSpeedSetting);
 
       if (result.success) {
         navigate(`/game/${result.game.roomName}`);
@@ -122,6 +123,46 @@ const LobbyPage = () => {
                   className="room-name-input"
                 />
               </div>
+
+              <div className="form-group speed-settings">
+                <label>Vitesse de chute initiale:</label>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      name="fallSpeed"
+                      value="slow"
+                      checked={fallSpeedSetting === 'slow'}
+                      onChange={(e) => setFallSpeedSetting(e.target.value)}
+                      disabled={isLoading}
+                    />{' '}
+                    Lente
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="fallSpeed"
+                      value="normal"
+                      checked={fallSpeedSetting === 'normal'}
+                      onChange={(e) => setFallSpeedSetting(e.target.value)}
+                      disabled={isLoading}
+                    />{' '}
+                    Normale
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="fallSpeed"
+                      value="fast"
+                      checked={fallSpeedSetting === 'fast'}
+                      onChange={(e) => setFallSpeedSetting(e.target.value)}
+                      disabled={isLoading}
+                    />{' '}
+                    Rapide
+                  </label>
+                </div>
+              </div>
+
               {error && <div className="error-message">{error}</div>}
               <button
                 type="submit"

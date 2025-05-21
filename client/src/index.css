@@ -236,7 +236,7 @@ html, body {
 }
 
 .share-input {
-  width: 95%;
+  width: 96%;
   padding: 12px;
   border-radius: 6px;
   border: 1px solid var(--grid-border-color);

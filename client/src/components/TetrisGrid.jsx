@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { useGame } from '../hooks/useGame';
+// Supprimer l'import de useGame car il n'est plus utilisé
+// import { useGame } from '../hooks/useGame';
 import { useSelector } from 'react-redux';
 import './Tetris.css';
 
@@ -61,7 +62,7 @@ const GridRow = React.memo(({ row, rowIndex, currentPiece, fallingCells }) => {
 });
 
 const TetrisGrid = ({ grid, currentPiece }) => {
-  const { autoDrop } = useGame();
+  // const { autoDrop } = useGame(); // Déjà supprimé ou commenté
   const { gameState } = useSelector(state => state.game);
   const { user } = useSelector(state => state.auth);
 
@@ -75,8 +76,8 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   const animationFrameRef = useRef(null);
   const displayGridRef = useRef(defaultGrid);
   const fallingCellsRef = useRef([]);
-  const autoDropIntervalRef = useRef(null);
   const lastUpdateTimeRef = useRef(0);
+  const lastAutoDropTimeRef = useRef(0); // Nouvelle référence pour le temps de la dernière chute auto
   const FPS_CAP = 60; // Limiter à 60 FPS pour une animation fluide mais efficace
 
   // States that trigger renders
@@ -102,64 +103,6 @@ const TetrisGrid = ({ grid, currentPiece }) => {
 
   // Utiliser la grille fournie ou la grille par défaut
   const baseGrid = grid || defaultGrid;
-
-  // Configuration de la chute automatique
-  useEffect(() => {
-    // Vérifier si le joueur est en game over ou si la partie est inactive
-    const isGameActive = gameState?.isActive;
-    const isPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
-
-    // Si le jeu n'est pas actif ou si le joueur est en game over, ne pas configurer la chute automatique
-    if (!currentPiece || !isGameActive || isPlayerGameOver) {
-      // Nettoyer tout intervalle existant
-      if (autoDropIntervalRef.current) {
-        clearInterval(autoDropIntervalRef.current);
-        autoDropIntervalRef.current = null;
-      }
-      return;
-    }
-
-    // Nettoyer tout intervalle existant
-    if (autoDropIntervalRef.current) {
-      clearInterval(autoDropIntervalRef.current);
-    }
-
-    // Obtenir le niveau actuel du joueur depuis l'état du jeu
-    const level = gameState?.level || 1;
-
-    // La vitesse augmente avec le niveau (plus le nombre est petit, plus c'est rapide)
-    // Formule plus progressive: niveau 1 = 800ms, niveau 10 = 200ms
-    const baseSpeed = 900;
-    const speedReduction = 70; // ms à réduire par niveau
-    const minSpeed = 100; // vitesse maximale (ms minimum)
-
-    const dropSpeed = Math.max(baseSpeed - ((level - 1) * speedReduction), minSpeed);
-
-    // Créer un nouvel intervalle pour la chute automatique
-    autoDropIntervalRef.current = setInterval(() => {
-      // Vérifier à nouveau avant chaque chute que le jeu est toujours actif
-      const currentGameState = gameState;
-      const isStillActive = currentGameState?.isActive;
-      const isNowGameOver = currentGameState?.playerStates?.[user?.id]?.gameOver;
-
-      if (isStillActive && !isNowGameOver) {
-        autoDrop();
-      } else {
-        // Arrêter la chute si le jeu n'est plus actif
-        if (autoDropIntervalRef.current) {
-          clearInterval(autoDropIntervalRef.current);
-          autoDropIntervalRef.current = null;
-        }
-      }
-    }, dropSpeed);
-
-    // Nettoyer l'intervalle lors du démontage ou lorsque la pièce change
-    return () => {
-      if (autoDropIntervalRef.current) {
-        clearInterval(autoDropIntervalRef.current);
-      }
-    };
-  }, [currentPiece, autoDrop, gameState, user?.id]);
 
   // Function to update the grid without state setters
   const updateGrid = useCallback(() => {
@@ -221,9 +164,9 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   }, [baseGrid, currentPiece]);
 
   // Set up the initial grid rendering
-  useEffect(() => {
+  /*useEffect(() => {
     updateGrid();
-  }, [baseGrid, currentPiece, updateGrid]);
+  }, [baseGrid, currentPiece, updateGrid]);*/
 
   // Handle animation frame updates with controlled FPS
   useEffect(() => {
@@ -241,7 +184,27 @@ const TetrisGrid = ({ grid, currentPiece }) => {
       // Limiter les FPS pour une meilleure performance
       if (!lastUpdateTimeRef.current || timestamp - lastUpdateTimeRef.current >= (1000 / FPS_CAP)) {
         lastUpdateTimeRef.current = timestamp;
-        updateGrid();
+        updateGrid(); // Met à jour la grille pour l'affichage
+
+        // Supprimer la logique de chute automatique pilotée par le client
+        /*
+        const isGameActive = gameState?.isActive;
+        const isPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
+
+        if (currentPiece && isGameActive && !isPlayerGameOver) {
+          const playerState = gameState?.playerStates?.[user?.id];
+          const serverFallSpeed = playerState?.fallSpeed;
+          const level = playerState?.level || gameState?.level || 1;
+          const fallSpeedToUse = serverFallSpeed || Math.max(100, (playerState?.initialFallSpeedSetting === 'slow' ? 1500 : playerState?.initialFallSpeedSetting === 'fast' ? 700 : 1200) - ((level - 1) * 70));
+
+          // console.log(`[TetrisGrid] Using fallSpeed: ${fallSpeedToUse}, serverFallSpeed: ${serverFallSpeed}, level: ${level}, initialSetting: ${playerState?.initialFallSpeedSetting}`);
+
+          if (timestamp - lastAutoDropTimeRef.current >= fallSpeedToUse) {
+            // autoDrop(); // Ne plus appeler autoDrop ici
+            lastAutoDropTimeRef.current = timestamp;
+          }
+        }
+        */
       }
 
       animationFrameRef.current = requestAnimationFrame(animationLoop);
@@ -258,8 +221,10 @@ const TetrisGrid = ({ grid, currentPiece }) => {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
+      // Réinitialiser le temps de la dernière chute automatique
+      lastAutoDropTimeRef.current = 0;
     };
-  }, [currentPiece, gameState?.isActive, user?.id, updateGrid]);
+  }, [currentPiece, gameState?.isActive, user?.id, updateGrid, gameState?.playerStates]);
 
   // Vérifier si le joueur actuel est en game over
   const isPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;

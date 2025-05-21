@@ -5,10 +5,11 @@ import { v4 as uuidv4 } from 'uuid';
  * Classe qui gère l'ensemble des parties de Tetris
  */
 export class GameManager {
-  constructor() {
+  constructor(broadcastPlayerUpdatesCallback) {
     this.games = new Map(); // Map des parties indexées par ID
     this.playerGameMap = new Map(); // Map des joueurs vers leur partie (playerId -> gameId)
     this.roomNameToIdMap = new Map(); // Map pour associer les noms de salle aux IDs de partie
+    this.broadcastPlayerUpdatesCallback = broadcastPlayerUpdatesCallback || (() => {}); // Fallback
 
     // Boucle de mise à jour du jeu
     this.lastUpdateTime = Date.now();
@@ -29,7 +30,13 @@ export class GameManager {
       // Mettre à jour toutes les parties actives
       for (const game of this.games.values()) {
         if (game.isActive) {
-          game.update(deltaTime);
+          const updateResult = game.update(deltaTime);
+          if (updateResult && updateResult.updatedPlayers && updateResult.updatedPlayers.length > 0) {
+            if (this.broadcastPlayerUpdatesCallback) {
+              this.broadcastPlayerUpdatesCallback(game.id, updateResult.updatedPlayers);
+            }
+          }
+          // Gérer gameHasEnded si nécessaire (pas implémenté ici pour l'instant)
         }
       }
 
@@ -52,16 +59,17 @@ export class GameManager {
    * @param {string} creatorId - ID du joueur qui crée la partie
    * @param {string} creatorName - Nom du joueur qui crée la partie
    * @param {string} roomName - Nom de la salle pour l'URL
+   * @param {string} initialFallSpeedSetting - Réglage de la vitesse de chute initiale
    * @returns {Game} La partie créée
    */
-  createGame(creatorId, creatorName, roomName) {
+  createGame(creatorId, creatorName, roomName, initialFallSpeedSetting = 'normal') {
     // Vérifier si le nom de salle n'est pas déjà utilisé
     if (this.roomNameToIdMap.has(roomName)) {
       throw new Error(`Une partie avec le nom "${roomName}" existe déjà`);
     }
 
     const gameId = uuidv4();
-    const game = new Game(gameId, roomName);
+    const game = new Game(gameId, roomName, initialFallSpeedSetting);
 
     // Ajouter le créateur comme premier joueur
     game.addPlayer(creatorId, creatorName);

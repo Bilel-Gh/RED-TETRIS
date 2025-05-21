@@ -48,7 +48,7 @@ export function useGame() {
     }
   };
 
-  const createGame = async (roomName) => {
+  const createGame = async (roomName, fallSpeedSetting) => {
     dispatch(createGameStart());
     try {
       if (!roomName) {
@@ -56,7 +56,7 @@ export function useGame() {
         return { success: false, error };
       }
 
-      const response = await socketService.createGame(roomName);
+      const response = await socketService.createGame(roomName, fallSpeedSetting);
       return response;
     } catch (error) {
       return error;

@@ -8,8 +8,9 @@ export class Player {
    * Crée un nouveau joueur
    * @param {string} id - Identifiant unique du joueur (généralement socketId)
    * @param {string} username - Nom d'utilisateur
+   * @param {string} initialFallSpeedSetting - Réglage de la vitesse de chute initiale ('slow', 'normal', 'fast')
    */
-  constructor(id, username) {
+  constructor(id, username, initialFallSpeedSetting = 'normal') {
     this.id = id;
     this.username = username;
     this.score = 0;
@@ -31,7 +32,8 @@ export class Player {
 
     // Gestion du temps et de la vitesse
     this.lastFallTime = 0;
-    this.fallSpeed = 1000; // Temps en ms entre les chutes (diminue avec le niveau)
+    this.initialFallSpeedSetting = initialFallSpeedSetting;
+    this.fallSpeed = this.getBaseFallSpeed(); // Temps en ms entre les chutes (diminue avec le niveau)
 
     // Spectre pour visualisation
     this.spectrum = Array(GRID_WIDTH || 10).fill(0);
@@ -46,9 +48,26 @@ export class Player {
   }
 
   /**
-   * Commence une nouvelle partie
+   * Calcule la vitesse de chute de base en fonction du réglage initial.
+   * @returns {number} Vitesse de chute de base en ms.
    */
-  startGame() {
+  getBaseFallSpeed() {
+    switch (this.initialFallSpeedSetting) {
+      case 'slow':
+        return 1000;
+      case 'fast':
+        return 300;
+      case 'normal':
+      default:
+        return 700;
+    }
+  }
+
+  /**
+   * Commence une nouvelle partie
+   * @param {string} initialFallSpeedSetting - Réglage de la vitesse de chute initiale optionnel
+   */
+  startGame(initialFallSpeedSetting) {
     this.score = 0;
     this.level = 1;
     this.lines = 0;
@@ -58,6 +77,10 @@ export class Player {
     this.grid = this.createEmptyGrid();
     this.currentPiece = null;
     this.nextPiece = null;
+    if (initialFallSpeedSetting) {
+      this.initialFallSpeedSetting = initialFallSpeedSetting;
+    }
+    this.fallSpeed = this.getBaseFallSpeed();
     this.spectrum = Array(GRID_WIDTH || 10).fill(0);
   }
 
@@ -75,7 +98,7 @@ export class Player {
     this.grid = this.createEmptyGrid();
     this.currentPiece = null;
     this.nextPiece = null;
-    this.fallSpeed = 1000;
+    this.fallSpeed = this.getBaseFallSpeed();
     this.lastFallTime = 0;
     this.spectrum = Array(GRID_WIDTH || 10).fill(0);
   }
@@ -120,8 +143,9 @@ export class Player {
     // Augmenter le niveau tous les 10 lignes
     this.level = Math.floor(this.lines / 10) + 1;
 
-    // Accélérer la vitesse de chute en fonction du niveau
-    this.fallSpeed = Math.max(100, 1000 - ((this.level - 1) * 50));
+    // Accélérer la vitesse de chute en fonction du niveau et du réglage initial
+    const baseSpeed = this.getBaseFallSpeed();
+    this.fallSpeed = Math.max(100, baseSpeed - ((this.level - 1) * 50)); // 50ms de réduction par niveau
 
     // Mettre à jour le spectre
     this.updateSpectrum();
@@ -185,7 +209,9 @@ export class Player {
       isWinner: this.isWinner || false,
       finalScore: this.finalScore || this.score, // Utiliser le score actuel par défaut
       finalLevel: this.finalLevel || this.level,  // Utiliser le niveau actuel par défaut
-      spectrum: this.spectrum // Ajout du spectre pour la visualisation des adversaires
+      spectrum: this.spectrum, // Ajout du spectre pour la visualisation des adversaires
+      fallSpeed: this.fallSpeed, // << AJOUTÉ
+      initialFallSpeedSetting: this.initialFallSpeedSetting // << AJOUTÉ
     };
   }
 }

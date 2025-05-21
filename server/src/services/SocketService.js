@@ -25,7 +25,35 @@ export class SocketService {
       reconnectionAttempts: 5
     });
 
-    this.gameManager = new GameManager();
+    this.gameManager = new GameManager((gameId, playersToUpdate) => {
+      for (const playerState of playersToUpdate) {
+        // Émission ciblée pour isCurrentPlayer = true
+        this.io.to(playerState.id).emit('game:player_updated', {
+          gameId: gameId,
+          player: { ...playerState, isCurrentPlayer: true }
+        });
+        // Émission générale à la room (sans isCurrentPlayer ou avec false)
+        // Pour éviter que le joueur reçoive deux fois, on pourrait l'exclure de cette émission
+        // ou s'assurer que le client gère correctement les doublons potentiels.
+        // Pour l'instant, une solution simple est d'émettre à la room entière, et le client
+        // qui est le joueur concerné écrasera simplement avec la version isCurrentPlayer.
+        // Une meilleure solution serait d'utiliser socket.broadcast.to(room) depuis le socket du joueur,
+        // mais ici nous sommes dans un contexte global de GameManager.
+
+        // Alternative: émettre à tous les sockets dans la room SAUF celui du joueur actuel.
+        const roomSockets = this.io.sockets.adapter.rooms.get(gameId);
+        if (roomSockets) {
+          roomSockets.forEach(socketId => {
+            if (socketId !== playerState.id) {
+              this.io.to(socketId).emit('game:player_updated', {
+                gameId: gameId,
+                player: { ...playerState, isCurrentPlayer: false } // ou omettre isCurrentPlayer
+              });
+            }
+          });
+        }
+      }
+    });
 
     // Map des utilisateurs connectés (socketId -> userData)
     this.users = new Map();
@@ -71,23 +99,34 @@ export class SocketService {
       // --- Gestion des parties ---
 
       // Créer une nouvelle partie
-      socket.on('game:create', (roomName, callback) => {
+      socket.on('game:create', ({ roomName, fallSpeedSetting }, callback) => {
         try {
           const user = this.users.get(socket.id);
 
+          console.log(`[SocketService] game:create received: roomName='${roomName}', fallSpeedSetting='${fallSpeedSetting}'`); // Log input
+
           if (!user) {
+            console.error('[SocketService] User not found for socket ID:', socket.id);
             throw new Error('Vous devez être connecté');
           }
 
-          // Valider le nom de la salle
+          // Valider le nom de la salle (avant nettoyage)
           if (!roomName || typeof roomName !== 'string' || roomName.trim() === '') {
+            console.error(`[SocketService] Initial roomName validation failed: roomName='${roomName}', type=${typeof roomName}`);
             throw new Error('Le nom de la salle est invalide');
           }
 
           // Nettoyer le nom de la salle (enlever espaces, caractères spéciaux, etc.)
           const cleanRoomName = roomName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+          console.log(`[SocketService] cleanRoomName after sanitization: '${cleanRoomName}'`); // Log sanitized name
 
-          const game = this.gameManager.createGame(socket.id, user.username, cleanRoomName);
+          // Valider le nom de la salle nettoyé
+          if (!cleanRoomName || cleanRoomName.replace(/-/g, '') === '') {
+            console.error(`[SocketService] cleanRoomName validation failed: '${cleanRoomName}' is empty or only hyphens.`);
+            throw new Error('Le nom de la salle est invalide après nettoyage (ne peut être vide ou contenir uniquement des tirets).');
+          }
+
+          const game = this.gameManager.createGame(socket.id, user.username, cleanRoomName, fallSpeedSetting);
 
           // Rejoindre la room Socket.io pour cette partie
           socket.join(game.id);

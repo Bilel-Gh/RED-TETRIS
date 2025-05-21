@@ -9,8 +9,9 @@ export class Game {
    * Crée une nouvelle partie
    * @param {string} id - Identifiant unique de la partie
    * @param {string} roomName - Nom de la salle (pour l'URL)
+   * @param {string} initialFallSpeedSetting - Réglage de la vitesse de chute initiale pour cette partie
    */
-  constructor(id, roomName) {
+  constructor(id, roomName, initialFallSpeedSetting = 'normal') {
     this.id = id;
     this.roomName = roomName;
     this.players = new Map(); // Map de Player indexée par id
@@ -19,6 +20,7 @@ export class Game {
     this.startedAt = null;
     this.maxPlayers = 4; // Limite à 4 joueurs
     this.host = null; // Premier joueur à rejoindre
+    this.initialFallSpeedSetting = initialFallSpeedSetting; // Stocker le réglage pour la partie
 
     // Pour la séquence de pièces partagée
     this.pieceSequence = [];
@@ -37,7 +39,7 @@ export class Game {
       throw new Error('La partie est complète');
     }
 
-    const player = new Player(playerId, username);
+    const player = new Player(playerId, username, this.initialFallSpeedSetting);
     this.players.set(playerId, player);
 
     // Le premier joueur devient l'hôte
@@ -104,7 +106,7 @@ export class Game {
 
     // Initialisation de tous les joueurs
     for (const player of this.players.values()) {
-      player.startGame();
+      player.startGame(this.initialFallSpeedSetting);
       this.spawnPiece(player);
     }
 
@@ -376,7 +378,7 @@ export class Game {
     if (!this.checkCollision(player, player.currentPiece, dx, dy)) {
       player.currentPiece.x += dx;
       player.currentPiece.y += dy;
-      return { moved: true, gameOver: false };
+      return { moved: true, gameOver: false, player: player.getState() };
     }
 
     // Si la pièce ne peut pas descendre, la verrouiller en place
@@ -458,6 +460,8 @@ export class Game {
   update(deltaTime) {
     if (!this.isActive) return;
 
+    const updatedPlayers = [];
+
     // Mettre à jour chaque joueur actif
     for (const player of this.players.values()) {
       if (!player.isPlaying || player.gameOver) continue;
@@ -465,13 +469,19 @@ export class Game {
       // Vérifier si c'est le moment de faire tomber la pièce
       const currentTime = Date.now();
       if (currentTime - player.lastFallTime >= player.fallSpeed) {
-        this.movePiece(player, 0, 1);
+        const moveResult = this.movePiece(player, 0, 1);
         player.lastFallTime = currentTime;
+        if (moveResult.player) { // Si movePiece a retourné un état joueur (la pièce a bougé ou a été lockée)
+          updatedPlayers.push(moveResult.player);
+        }
       }
     }
 
     // Vérifier si la partie est terminée
-    this.checkGameEnd();
+    const gameHasEnded = this.checkGameEnd();
+
+    // Retourner les joueurs mis à jour et l'état de fin de partie
+    return { updatedPlayers, gameHasEnded };
   }
 
   /**

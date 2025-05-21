@@ -332,17 +332,17 @@ const getGames = async () => {
 };
 
 // Créer une nouvelle partie
-const createGame = async (roomName) => {
+const createGame = async (roomName, fallSpeedSetting) => {
   try {
     await ensureConnection();
 
-    console.log('Création d\'une nouvelle partie:', roomName);
+    console.log(`Tentative de création de partie avec le nom "${roomName}" et vitesse "${fallSpeedSetting}"`);
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Délai de création de partie dépassé'));
       }, 5000);
 
-      socket.emit('game:create', roomName, (response) => {
+      socket.emit('game:create', { roomName, fallSpeedSetting }, (response) => {
         clearTimeout(timeout);
 
         console.log('Réponse de la création de partie:', response);
