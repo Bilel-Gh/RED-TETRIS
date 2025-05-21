@@ -34,6 +34,7 @@ export class Player {
     this.lastFallTime = 0;
     this.initialFallSpeedSetting = initialFallSpeedSetting;
     this.fallSpeed = this.getBaseFallSpeed(); // Temps en ms entre les chutes (diminue avec le niveau)
+    this.pieceQueueIndex = 0; // Index du joueur dans la séquence de pièces de la partie
 
     // Spectre pour visualisation
     this.spectrum = Array(GRID_WIDTH || 10).fill(0);
@@ -81,6 +82,7 @@ export class Player {
       this.initialFallSpeedSetting = initialFallSpeedSetting;
     }
     this.fallSpeed = this.getBaseFallSpeed();
+    this.pieceQueueIndex = 0; // Réinitialiser l'index de pièce pour une nouvelle partie
     this.spectrum = Array(GRID_WIDTH || 10).fill(0);
   }
 
@@ -100,6 +102,7 @@ export class Player {
     this.nextPiece = null;
     this.fallSpeed = this.getBaseFallSpeed();
     this.lastFallTime = 0;
+    this.pieceQueueIndex = 0; // Réinitialiser aussi ici
     this.spectrum = Array(GRID_WIDTH || 10).fill(0);
   }
 
@@ -210,8 +213,9 @@ export class Player {
       finalScore: this.finalScore || this.score, // Utiliser le score actuel par défaut
       finalLevel: this.finalLevel || this.level,  // Utiliser le niveau actuel par défaut
       spectrum: this.spectrum, // Ajout du spectre pour la visualisation des adversaires
-      fallSpeed: this.fallSpeed, // << AJOUTÉ
-      initialFallSpeedSetting: this.initialFallSpeedSetting // << AJOUTÉ
+      fallSpeed: this.fallSpeed,
+      initialFallSpeedSetting: this.initialFallSpeedSetting,
+      // pieceQueueIndex: this.pieceQueueIndex, // Pas nécessaire de l'envoyer au client a priori
     };
   }
 }

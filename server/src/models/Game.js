@@ -24,8 +24,7 @@ export class Game {
 
     // Pour la séquence de pièces partagée
     this.pieceSequence = [];
-    this.pieceIndex = 0;
-    this.sequenceLength = 1000; // Nombre de pièces à pré-générer
+    this.sequenceLength = 1000; // Nombre de pièces à pré-générer, ou plusieurs sacs
   }
 
   /**
@@ -117,48 +116,47 @@ export class Game {
    * Génère une séquence de pièces partagée pour tous les joueurs
    */
   generateSharedPieceSequence() {
-    const types = Object.keys(Piece.SHAPES);
+    const pieceTypes = Object.keys(Piece.SHAPES);
     this.pieceSequence = [];
+    const bagSize = pieceTypes.length; // Typiquement 7 pour Tetris
+    const numBags = Math.ceil(this.sequenceLength / bagSize);
 
-    // Générer une séquence de pièces aléatoires
-    for (let i = 0; i < this.sequenceLength; i++) {
-      const randomType = types[Math.floor(Math.random() * types.length)];
-      this.pieceSequence.push(randomType);
+    for (let i = 0; i < numBags; i++) {
+      // Créer un "sac" avec une de chaque pièce
+      let currentBag = [...pieceTypes];
+      // Mélanger le sac (algorithme de Fisher-Yates)
+      for (let j = currentBag.length - 1; j > 0; j--) {
+        const k = Math.floor(Math.random() * (j + 1));
+        [currentBag[j], currentBag[k]] = [currentBag[k], currentBag[j]];
+      }
+      this.pieceSequence.push(...currentBag);
     }
-
-    // Réinitialiser l'index
-    this.pieceIndex = 0;
+    // Assurer que la sequenceLength est respectée si elle n'est pas un multiple de bagSize
+    this.pieceSequence = this.pieceSequence.slice(0, this.sequenceLength);
   }
 
   /**
-   * Génère une nouvelle pièce à partir de la séquence partagée
-   * @returns {Piece} La pièce générée
+   * Fournit le prochain type de pièce pour un joueur à partir de la séquence partagée du jeu.
+   * Si la séquence est épuisée pour ce joueur, elle est (idéalement) étendue ou le jeu gère la fin.
+   * Pour l'instant, si l'index dépasse la séquence principale, on la régénère (ce qui peut désynchroniser si les séquences ne sont pas identiques).
+   * Une meilleure approche serait de boucler sur la séquence ou de la considérer comme infinie via régénération identique.
+   * @param {Player} player - Le joueur qui demande une pièce.
+   * @returns {string} Le type de la prochaine pièce.
    */
-  generateRandomPiece() {
-    // Si on arrive à la fin de la séquence, régénérer une nouvelle séquence
-    if (this.pieceIndex >= this.pieceSequence.length) {
-      this.generateSharedPieceSequence();
+  getNextPieceTypeForPlayer(player) {
+    if (player.pieceQueueIndex >= this.pieceSequence.length) {
+      // Option 1: Régénérer la séquence partagée (comme avant, mais peut causer des désynchronisations si les joueurs sont à des points différents)
+      // this.generateSharedPieceSequence();
+      // player.pieceQueueIndex = 0; // Réinitialiser pour tous, ou juste pour ce joueur?
+      // Pour garder la synchro, si un joueur dépasse, il devrait boucler ou la partie s'arrête.
+      // Pour l'instant, bouclons sur la séquence existante pour éviter une régénération en cours de partie.
+      player.pieceQueueIndex = player.pieceQueueIndex % this.pieceSequence.length;
+      console.warn(`[Game ${this.id}] Player ${player.id} pieceQueueIndex wrapped around.`);
+      // Alternative: throw new Error('Piece sequence exhausted for player.');
     }
-
-    // Utiliser le type de pièce de la séquence partagée
-    const type = this.pieceSequence[this.pieceIndex++];
-
-    // Positionner au milieu en haut
-    const piece = new Piece(type, 3, 0);
-
-    return piece;
-  }
-
-  /**
-   * Arrête la partie
-   */
-  stop() {
-    this.isActive = false;
-
-    // Marquer tous les joueurs comme n'étant plus en train de jouer
-    for (const player of this.players.values()) {
-      player.isPlaying = false;
-    }
+    const type = this.pieceSequence[player.pieceQueueIndex];
+    player.pieceQueueIndex++;
+    return type;
   }
 
   /**
@@ -167,16 +165,11 @@ export class Game {
    * @returns {boolean} true si le joueur est en game over après cette opération
    */
   spawnPiece(player) {
-    // Si pas de pièce suivante, en générer une
-    if (!player.nextPiece) {
-      player.nextPiece = this.generateRandomPiece();
-    }
+    const currentPieceType = player.nextPiece ? player.nextPiece.type : this.getNextPieceTypeForPlayer(player);
+    const nextPieceType = this.getNextPieceTypeForPlayer(player);
 
-    // La pièce suivante devient la pièce courante
-    player.currentPiece = player.nextPiece;
-
-    // Générer une nouvelle pièce suivante
-    player.nextPiece = this.generateRandomPiece();
+    player.currentPiece = new Piece(currentPieceType, 3, 0);
+    player.nextPiece = new Piece(nextPieceType, 3, 0);
 
     // Vérifier si la nouvelle pièce peut être placée, sinon game over
     if (this.checkCollision(player, player.currentPiece)) {
@@ -539,5 +532,23 @@ export class Game {
       startedAt: this.startedAt,
       winner: this.winner || null
     };
+  }
+
+  /**
+   * Arrête la partie
+   */
+  stop() {
+    this.isActive = false;
+
+    // Marquer tous les joueurs comme n'étant plus en train de jouer
+    for (const player of this.players.values()) {
+      player.isPlaying = false;
+      // Conserver le score final, etc.
+      if (!player.finalScore) { // Ne pas écraser si déjà défini (ex: par un abandon)
+        player.finalScore = player.score;
+        player.finalLevel = player.level;
+      }
+    }
+    console.log(`[Game ${this.id}] Game stopped. isActive: ${this.isActive}`);
   }
 }
