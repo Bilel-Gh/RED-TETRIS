@@ -1,33 +1,42 @@
+/* Styles pour les grilles des adversaires */
 .opponent-grid-container {
   display: flex;
   flex-direction: column;
   margin: 0 10px;
-  background-color: rgba(30, 30, 30, 0.7);
-  border-radius: 5px;
-  border: 2px solid #333;
-  padding: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  background-color: var(--grid-bg-color);
+  border-radius: 10px;
+  border: 1px solid var(--grid-border-color);
+  padding: 12px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
   min-width: 150px;
   height: 300px;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.opponent-grid-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .opponent-grid-container.game-over {
   opacity: 0.7;
-  filter: grayscale(70%);
+  filter: grayscale(80%);
 }
 
 .opponent-header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 8px;
-  color: white;
+  margin-bottom: 12px;
+  color: var(--text-color);
 }
 
 .opponent-header h3 {
   margin: 0;
   font-size: 16px;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -37,31 +46,40 @@
 .opponent-score {
   font-size: 12px;
   margin-top: 4px;
+  color: var(--accent-color);
+  font-weight: 500;
 }
 
 .opponent-eliminated {
-  color: #ff5252;
+  color: var(--primary-color);
   font-weight: bold;
   margin-top: 4px;
   font-size: 12px;
+  background-color: rgba(231, 76, 60, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 /* Spectre */
 .opponent-spectrum {
   display: flex;
   height: 120px;
-  background-color: rgba(0, 0, 0, 0.5);
-  border: 1px solid #555;
+  background-color: rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--grid-border-color);
+  border-radius: 6px;
   padding: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .spectrum-column {
   flex: 1;
   margin: 0 1px;
-  background-color: #ff5252;
+  background-color: var(--primary-color);
   align-self: flex-end;
   transition: height 0.3s ease;
+  border-radius: 3px 3px 0 0;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  opacity: 0.8;
 }
 
 /* Mini grille */
@@ -69,8 +87,10 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  border: 1px solid #555;
-  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--grid-border-color);
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
 .mini-row {
@@ -80,46 +100,72 @@
 
 .mini-cell {
   flex: 1;
-  border: 1px solid rgba(50, 50, 50, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: background-color 0.2s ease;
 }
 
 /* Styles pour les différentes couleurs de pièces */
 .mini-cell.piece-I {
-  background-color: #00ffff;
+  background: linear-gradient(135deg, #00e5ff, #00b8d4);
 }
 
 .mini-cell.piece-O {
-  background-color: #ffff00;
+  background: linear-gradient(135deg, #ffeb3b, #fdd835);
 }
 
 .mini-cell.piece-T {
-  background-color: #800080;
+  background: linear-gradient(135deg, #ab47bc, #8e24aa);
 }
 
 .mini-cell.piece-S {
-  background-color: #00ff00;
+  background: linear-gradient(135deg, #4caf50, #388e3c);
 }
 
 .mini-cell.piece-Z {
-  background-color: #ff0000;
+  background: linear-gradient(135deg, #f44336, #d32f2f);
 }
 
 .mini-cell.piece-J {
-  background-color: #0000ff;
+  background: linear-gradient(135deg, #2196f3, #1976d2);
 }
 
 .mini-cell.piece-L {
-  background-color: #ff7f00;
+  background: linear-gradient(135deg, #ff9800, #f57c00);
 }
 
 /* Style spécifique pour les lignes de pénalité */
 .mini-cell.penalty {
-  background-color: #888;
+  background-color: #616161;
   background-image: repeating-linear-gradient(
     45deg,
-    #888,
-    #888 5px,
-    #666 5px,
-    #666 10px
+    #616161,
+    #616161 5px,
+    #424242 5px,
+    #424242 10px
   );
+}
+
+/* Animation pour les mises à jour du spectre */
+@keyframes spectrumUpdate {
+  0% { opacity: 0.6; transform: scaleY(0.96); }
+  50% { opacity: 1; transform: scaleY(1.04); }
+  100% { opacity: 0.8; transform: scaleY(1); }
+}
+
+.spectrum-column.updated {
+  animation: spectrumUpdate 0.5s ease;
+}
+
+/* Media queries pour les écrans plus petits */
+@media (max-width: 768px) {
+  .opponent-grid-container {
+    min-width: 120px;
+    height: 250px;
+    margin: 0 5px;
+    padding: 8px;
+  }
+
+  .opponent-spectrum {
+    height: 100px;
+  }
 }

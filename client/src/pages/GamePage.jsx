@@ -362,12 +362,16 @@ const GamePage = () => {
         {gameState?.isActive && (
           <div className="game-area">
             <div className="main-grid-container">
-              <TetrisGrid
-                grid={gameState.grid}
-                currentPiece={gameState.currentPiece}
-              />
+              <div className="tetris-and-next">
+                <TetrisGrid
+                  grid={gameState.grid}
+                  currentPiece={gameState.currentPiece}
+                />
+                <div className="next-piece-side-container">
+                  <NextPiece type={gameState.nextPiece} />
+                </div>
+              </div>
               <div className="game-sidebar">
-                <NextPiece type={gameState.nextPiece} />
                 <div className="game-stats">
                   <div className="stat-item">
                     <span className="stat-label">Score</span>

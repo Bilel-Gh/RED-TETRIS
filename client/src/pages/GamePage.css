@@ -7,6 +7,45 @@
   /* Le dégradé est déjà appliqué via le #root */
   color: var(--text-color);
   min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Ajout d'un élément visuel en arrière-plan */
+.game-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(
+    circle at top right,
+    var(--accent-color-rgb, rgba(52, 152, 219, 0.07)) 0%,
+    transparent 70%
+  );
+  opacity: 0.07;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.game-page::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(
+    circle at bottom left,
+    var(--primary-color-rgb, rgba(231, 76, 60, 0.07)) 0%,
+    transparent 70%
+  );
+  opacity: 0.07;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .game-header {
@@ -14,17 +53,29 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid var(--secondary-color);
+  padding: 20px;
+  border-radius: 12px;
+  background-color: var(--grid-bg-color);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--grid-border-color);
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 15px;
+  transition: all 0.3s ease;
 }
 
 .game-title {
   font-size: 2rem;
-  font-weight: bold;
+  font-weight: 800;
   color: var(--primary-color);
   margin: 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: -1px;
+  transition: all 0.3s ease;
+}
+
+.game-title:hover {
+  transform: scale(1.05);
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.15);
 }
 
 .game-info {
@@ -62,12 +113,49 @@
   align-items: center;
   justify-content: center;
   height: 50vh;
-  gap: 20px;
+  gap: 30px;
+  background-color: var(--grid-bg-color);
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--grid-border-color);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.waiting-room::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.03),
+    transparent
+  );
+  transform: rotate(45deg);
+  animation: shine 8s infinite linear;
+  z-index: 1;
+  pointer-events: none;
+}
+
+@keyframes shine {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
 }
 
 .waiting-title {
-  font-size: 1.5rem;
-  color: #e67e22;
+  font-size: 1.8rem;
+  color: var(--accent-color);
+  font-weight: 600;
+  text-align: center;
+  margin: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .game-area {
@@ -75,18 +163,37 @@
   flex-direction: column;
   align-items: center;
   gap: 30px;
+  padding: 10px;
+  position: relative;
+  width: 100%;
 }
 
 .main-grid-container {
   display: flex;
   justify-content: center;
   gap: 30px;
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.tetris-and-next {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.next-piece-side-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .game-sidebar {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 200px;
 }
 
 /* Messages de fin de jeu */
@@ -165,16 +272,19 @@
 
 /* Aide aux contrôles */
 .controls-help {
-  background-color: var(--secondary-color);
-  padding: 15px;
-  border-radius: 8px;
+  background-color: var(--grid-bg-color);
+  padding: 15px 20px;
+  border-radius: 10px;
   margin-top: 20px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--grid-border-color);
 }
 
 .controls-help p {
-  font-weight: bold;
-  margin: 0 0 8px 0;
+  font-weight: 600;
+  margin: 0 0 10px 0;
   color: var(--primary-color);
+  font-size: 1rem;
 }
 
 .controls-help ul {
@@ -183,46 +293,44 @@
 }
 
 .controls-help li {
-  margin-bottom: 5px;
-  font-size: 14px;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: var(--text-color);
 }
 
 /* Styles pour les contrôles mobiles */
 .mobile-controls {
   display: none;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px;
+  background-color: var(--grid-bg-color);
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--grid-border-color);
   margin-top: 20px;
   width: 100%;
 }
 
 .control-btn {
-  background-color: var(--secondary-color);
+  background-color: var(--accent-color);
   color: white;
+  transition: all 0.2s ease;
+  transform-origin: center;
+  font-size: 1.3rem;
   border: none;
   border-radius: 8px;
-  padding: 12px;
-  font-size: 20px;
+  padding: 15px;
   cursor: pointer;
-  transition: background-color 0.2s;
   display: flex;
   justify-content: center;
   align-items: center;
-  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-}
-
-.control-btn:active {
-  background-color: #3498db;
-  transform: scale(0.95);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .drop-btn {
   grid-column: span 3;
-  background-color: #e74c3c;
-}
-
-.drop-btn:active {
-  background-color: #c0392b;
+  background-color: var(--primary-color);
 }
 
 /* Retour visuel des actions */
@@ -231,19 +339,20 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background-color: rgba(52, 152, 219, 0.7);
+  background-color: var(--accent-color);
   color: white;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: bold;
-  animation: fadeInOut 0.3s ease-in-out;
+  padding: 12px 24px;
+  border-radius: 50px;
+  font-weight: 600;
+  animation: fadeInOut 0.5s ease-in-out;
   z-index: 100;
   pointer-events: none;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes fadeInOut {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-  50% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
 }
 
@@ -272,6 +381,11 @@
   }
 
   .main-grid-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .tetris-and-next {
     flex-direction: column;
     align-items: center;
   }
@@ -744,14 +858,91 @@
 /* Container pour le sélecteur de thème */
 .theme-toggle-container {
   position: absolute;
-  top: 20px;
+  bottom: 20px;
   right: 20px;
   z-index: 10;
+  max-width: 100px;
 }
 
 @media (max-width: 768px) {
   .theme-toggle-container {
     top: 10px;
-    right: 10px;
+    left: 10px;
   }
+}
+
+/* Ajout d'un effet de fond brillant pour la zone de jeu */
+.tetris-grid-container::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(var(--primary-color-rgb), 0.1) 0%,
+    rgba(var(--accent-color-rgb), 0.05) 50%,
+    rgba(0, 0, 0, 0) 100%);
+  filter: blur(10px);
+  z-index: -1;
+  opacity: 0.5;
+  border-radius: 50%;
+  animation: pulse-glow 5s infinite alternate;
+}
+
+@keyframes pulse-glow {
+  0% { opacity: 0.3; transform: scale(0.97); }
+  100% { opacity: 0.6; transform: scale(1.03); }
+}
+
+/* Style pour le bloc de navigation/information du jeu */
+.game-nav-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background-color: var(--grid-bg-color);
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  border: 1px solid var(--grid-border-color);
+}
+
+/* Améliorations pour les boutons de jeu */
+.start-button, .leave-button, .exit-game-over-btn {
+  background-color: var(--accent-color);
+  border-radius: 8px;
+  font-weight: 600;
+  padding: 10px 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.start-button:hover, .leave-button:hover, .exit-game-over-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
+}
+
+.start-button:active, .leave-button:active, .exit-game-over-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.leave-button {
+  background-color: var(--primary-color);
+}
+
+/* Animation pour l'entrée des éléments */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.control-btn:active {
+  transform: scale(0.95);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
 }

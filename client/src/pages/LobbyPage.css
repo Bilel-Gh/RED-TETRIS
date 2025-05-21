@@ -347,14 +347,15 @@
 /* Container pour le sélecteur de thème */
 .theme-toggle-container {
   position: absolute;
-  top: 20px;
+  bottom: 20px;
   right: 20px;
   z-index: 10;
+  max-width: 100px;
 }
 
 @media (max-width: 768px) {
   .theme-toggle-container {
     top: 10px;
-    right: 10px;
+    left: 10px;
   }
 }
