@@ -1,6 +1,63 @@
-/* Minimal CSS for basic layout */
+/* Variables pour les thèmes */
 :root {
+  /* Variables par défaut (thème clair) */
+  --background-color: #f5f5f5;
+  --background-gradient: linear-gradient(to bottom right, #f5f5f5, #e9e9e9);
+  --text-color: #333333;
+  --primary-color: #e74c3c;
+  --secondary-color: #2c3e50;
+  --accent-color: #3498db;
+  --grid-bg-color: #ffffff;
+  --grid-border-color: rgba(0, 0, 0, 0.1);
+  --player-badge-bg: #e0e0e0;
+  --button-bg: #3498db;
+  --button-hover-bg: #2980b9;
+  --button-text: #ffffff;
+  --modal-bg: #ffffff;
+  --modal-overlay: rgba(0, 0, 0, 0.6);
+
   font-family: system-ui, sans-serif;
+}
+
+/* Thème sombre */
+.dark-theme {
+  --background-color: #121212;
+  --background-gradient: linear-gradient(to bottom right, #121212, #1a1a2e);
+  --text-color: #ecf0f1;
+  --primary-color: #ff6b6b;
+  --secondary-color: #1e3a5f;
+  --accent-color: #4dabf7;
+  --grid-bg-color: #1e1e24;
+  --grid-border-color: rgba(255, 255, 255, 0.1);
+  --player-badge-bg: #2c3e50;
+  --button-bg: #4dabf7;
+  --button-hover-bg: #2b8ae2;
+  --button-text: #ffffff;
+  --modal-bg: #1e1e24;
+  --modal-overlay: rgba(0, 0, 0, 0.8);
+}
+
+/* Thème clair */
+.light-theme {
+  --background-color: #f5f5f5;
+  --background-gradient: linear-gradient(to bottom right, #f5f5f5, #e9e9e9);
+  --text-color: #333333;
+  --primary-color: #e74c3c;
+  --secondary-color: #2c3e50;
+  --accent-color: #3498db;
+  --grid-bg-color: #ffffff;
+  --grid-border-color: rgba(0, 0, 0, 0.1);
+  --player-badge-bg: #e0e0e0;
+  --button-bg: #3498db;
+  --button-hover-bg: #2980b9;
+  --button-text: #ffffff;
+  --modal-bg: #ffffff;
+  --modal-overlay: rgba(0, 0, 0, 0.6);
+}
+
+/* Transition pour les changements de thème */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 html, body, #root {
@@ -15,6 +72,9 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background: var(--background-gradient);
+  color: var(--text-color);
+  position: relative;
 }
 
 /* User section styling */
@@ -27,19 +87,83 @@ html, body, #root {
 /* Logout button */
 .logout-button {
   padding: 8px 16px;
-  background-color: #c0392b;
-  color: white;
+  background-color: var(--primary-color);
+  color: var(--button-text);
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-weight: bold;
   transition: all 0.2s;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .logout-button:hover {
-  background-color: #e74c3c;
+  background-color: #c0392b;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .logout-button:active {
-  transform: scale(0.98);
+  transform: scale(0.98) translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Style global pour le bouton de thème */
+.theme-toggle {
+  width: 45px;
+  height: 45px;
+  background-color: var(--grid-bg-color);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--text-color);
+  margin-left: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  border: 1px solid var(--grid-border-color);
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Animation du bouton de thème */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(52, 152, 219, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
+  }
+}
+
+.dark-theme .theme-toggle {
+  animation: pulse 2s infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
+
+  .logout-button {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+  }
 }

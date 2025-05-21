@@ -6,8 +6,11 @@
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
-  background-color: #121212;
-  color: #ecf0f1;
+  background: var(--background-gradient);
+  color: var(--text-color);
+  position: relative;
+  /* Déjà défini dans #root */
+  /* background-image: linear-gradient(to bottom right, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); */
 }
 
 .login-container {
@@ -16,29 +19,72 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 30px;
-  background-color: #1e1e1e;
-  border-radius: 10px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  padding: 40px;
+  background-color: var(--grid-bg-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
 }
 
 .login-header {
-  margin-bottom: 30px;
+  margin-bottom: 40px;
   text-align: center;
 }
 
 .login-title {
-  font-size: 3rem;
-  font-weight: bold;
-  color: #e74c3c;
-  margin: 0 0 10px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-size: 3.2rem;
+  font-weight: 800;
+  color: var(--primary-color);
+  margin: 0 0 15px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: -1px;
 }
 
 .login-subtitle {
   font-size: 1.2rem;
-  color: #bdc3c7;
+  color: var(--text-color);
+  opacity: 0.9;
   margin: 0;
+  font-weight: 300;
+}
+
+/* Container pour le sélecteur de thème */
+.theme-toggle-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+}
+
+/* Style amélioré pour le bouton de thème */
+.theme-toggle {
+  width: 50px;
+  height: 50px;
+  background-color: var(--grid-bg-color);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--text-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  outline: none;
+  transform-origin: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1) rotate(10deg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
 }
 
 /* Animation pour la page */
@@ -48,13 +94,13 @@
 }
 
 .login-container {
-  animation: fadeIn 0.5s ease forwards;
+  animation: fadeIn 0.6s ease-out forwards;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .login-container {
-    padding: 20px;
+    padding: 30px 20px;
   }
 
   .login-title {
@@ -63,5 +109,16 @@
 
   .login-subtitle {
     font-size: 1rem;
+  }
+
+  .theme-toggle-container {
+    top: 10px;
+    right: 10px;
+  }
+
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
   }
 }

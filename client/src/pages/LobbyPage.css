@@ -4,8 +4,8 @@
   flex-direction: column;
   height: 100%;
   padding: 20px;
-  background-color: #121212;
-  color: #ecf0f1;
+  /* Le dégradé est déjà appliqué via le #root */
+  color: var(--text-color);
   min-height: 100vh;
 }
 
@@ -21,16 +21,18 @@
   align-items: center;
   margin-bottom: 30px;
   padding-bottom: 15px;
-  border-bottom: 2px solid #2c3e50;
+  border-bottom: 2px solid var(--secondary-color);
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .lobby-title {
   font-size: 2.5rem;
-  font-weight: bold;
-  color: #e74c3c;
+  font-weight: 800;
+  color: var(--primary-color);
   margin: 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: -1px;
 }
 
 .user-section {
@@ -45,14 +47,14 @@
 }
 
 .username {
-  color: #e74c3c;
+  color: var(--primary-color);
   font-weight: bold;
 }
 
 .logout-button {
   padding: 8px 16px;
-  background-color: #c0392b;
-  color: white;
+  background-color: var(--primary-color);
+  color: var(--button-text);
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -61,23 +63,32 @@
 }
 
 .logout-button:hover {
-  background-color: #e74c3c;
+  background-color: #c0392b;
 }
 
 /* Carte pour créer une partie */
 .create-game-card {
-  background-color: #1e1e1e;
-  border-radius: 8px;
-  padding: 20px;
+  background-color: var(--grid-bg-color);
+  border-radius: 12px;
+  padding: 25px;
   margin-bottom: 30px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--grid-border-color);
+  backdrop-filter: blur(5px);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.create-game-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
 .create-game-title {
   font-size: 1.5rem;
-  color: #e67e22;
+  color: var(--primary-color);
   margin-top: 0;
   margin-bottom: 20px;
+  font-weight: 600;
 }
 
 .create-game-form {
@@ -89,68 +100,119 @@
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  position: relative;
 }
 
 .form-group label {
   font-size: 1rem;
-  color: #bdc3c7;
+  color: var(--text-color);
+  opacity: 0.8;
+  font-weight: 500;
+  margin-left: 5px;
 }
 
 .room-name-input {
-  padding: 10px 15px;
-  border: 1px solid #2c3e50;
-  background-color: #2c3e50;
-  color: white;
-  border-radius: 5px;
-  font-size: 1rem;
+  padding: 15px;
+  background-color: var(--background-color);
+  border: 2px solid var(--grid-border-color);
+  border-radius: 8px;
+  color: var(--text-color);
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 }
 
 .room-name-input:focus {
-  border-color: #3498db;
   outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+  transform: translateY(-2px);
+}
+
+.room-name-input::placeholder {
+  color: var(--text-color);
+  opacity: 0.5;
 }
 
 .create-game-button {
-  padding: 12px;
-  background-color: #27ae60;
+  padding: 15px;
+  background-color: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 5px;
-  font-weight: bold;
+  border-radius: 8px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-top: 10px;
+  transition: all 0.3s ease;
+  margin-top: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
 .create-game-button:hover {
-  background-color: #2ecc71;
+  background-color: #c0392b;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(231, 76, 60, 0.3);
+}
+
+.create-game-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
 }
 
 .create-game-button:disabled {
   background-color: #95a5a6;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.create-game-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0));
+  transform: translateX(-100%);
+  transition: transform 0.8s ease;
+}
+
+.create-game-button:hover::after {
+  transform: translateX(100%);
 }
 
 .error-message {
-  color: #e74c3c;
+  color: var(--primary-color);
   font-size: 0.9rem;
+  padding: 5px 8px;
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  background-color: rgba(231, 76, 60, 0.1);
+  border-radius: 4px;
   margin-top: 5px;
+  border-left: 3px solid var(--primary-color);
 }
 
 /* Liste des parties */
 .games-list-card {
-  background-color: #1e1e1e;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  background-color: var(--grid-bg-color);
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--grid-border-color);
+  backdrop-filter: blur(5px);
 }
 
 .games-list-title {
   font-size: 1.5rem;
-  color: #e67e22;
+  color: var(--primary-color);
   margin-top: 0;
   margin-bottom: 20px;
+  font-weight: 600;
 }
 
 .games-list {
@@ -163,10 +225,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
-  background-color: #2c3e50;
-  border-radius: 8px;
+  padding: 18px;
+  background-color: var(--background-color);
+  border-radius: 10px;
   gap: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  border: 1px solid var(--grid-border-color);
+}
+
+.game-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
 .game-info {
@@ -176,34 +246,44 @@
 .game-owner {
   font-size: 1.2rem;
   margin: 0 0 5px;
-  color: #3498db;
+  color: var(--accent-color);
+  font-weight: 600;
 }
 
 .game-room-name {
   margin: 0 0 5px;
-  color: #ecf0f1;
+  color: var(--text-color);
 }
 
 .game-players-count {
   margin: 0;
   font-size: 0.9rem;
-  color: #95a5a6;
+  color: var(--text-color);
+  opacity: 0.7;
 }
 
 .join-game-button {
-  padding: 8px 16px;
-  background-color: #3498db;
+  padding: 10px 20px;
+  background-color: var(--accent-color);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
+  font-weight: 600;
+  transition: all 0.3s ease;
   white-space: nowrap;
+  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.2);
 }
 
 .join-game-button:hover {
-  background-color: #2980b9;
+  background-color: var(--button-hover-bg);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(52, 152, 219, 0.25);
+}
+
+.join-game-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
 }
 
 /* Message quand aucune partie n'est disponible */
@@ -261,5 +341,20 @@
 
   .join-game-button {
     width: 100%;
+  }
+}
+
+/* Container pour le sélecteur de thème */
+.theme-toggle-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .theme-toggle-container {
+    top: 10px;
+    right: 10px;
   }
 }

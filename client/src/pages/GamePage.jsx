@@ -2,6 +2,7 @@ import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import TetrisGrid from '../components/TetrisGrid';
 import NextPiece from '../components/NextPiece';
 import OpponentGrid from '../components/OpponentGrid';
@@ -14,6 +15,7 @@ const GamePage = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const {
     currentGame,
     gameState,
@@ -296,6 +298,17 @@ const GamePage = () => {
   return (
     <PageTransition>
       <div className="game-page">
+        <div className="theme-toggle-container">
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle"
+            aria-label={theme === 'light' ? 'Passer au thème sombre' : 'Passer au thème clair'}
+            title={theme === 'light' ? 'Passer au thème sombre' : 'Passer au thème clair'}
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+        </div>
+
         <div className="game-header">
           <h1 className="game-title">RED TETRIS</h1>
 

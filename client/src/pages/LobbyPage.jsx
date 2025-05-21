@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import PageTransition from '../components/PageTransition';
 import './LobbyPage.css';
 
 const LobbyPage = () => {
   const { user, logout } = useAuth();
   const { getGames, createGame, joinGame, gamesList } = useGame();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [roomName, setRoomName] = useState('');
@@ -81,6 +83,17 @@ const LobbyPage = () => {
   return (
     <PageTransition>
       <div className="lobby-page">
+        <div className="theme-toggle-container">
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle"
+            aria-label={theme === 'light' ? 'Passer au thème sombre' : 'Passer au thème clair'}
+            title={theme === 'light' ? 'Passer au thème sombre' : 'Passer au thème clair'}
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+        </div>
+
         <div className="lobby-container">
           <div className="lobby-header">
             <h1 className="lobby-title">Lobby</h1>

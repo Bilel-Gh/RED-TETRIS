@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParam
 import { useSelector, useDispatch } from 'react-redux';
 import { useAuth } from './hooks/useAuth';
 import { useGame } from './hooks/useGame';
+import { useTheme } from './hooks/useTheme';
 import LoginPage from './pages/LoginPage';
 import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
@@ -107,6 +108,9 @@ const GameRouteHandler = () => {
 function App() {
   const { isAuthenticated, user } = useSelector(state => state.auth);
   const { login } = useAuth();
+
+  // Initialiser le thème (pas besoin de déstructurer, seulement initialiser le hook)
+  useTheme();
 
   // Vérifier l'état de connexion au chargement de l'application
   useEffect(() => {
