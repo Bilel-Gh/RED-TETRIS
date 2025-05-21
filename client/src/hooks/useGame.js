@@ -87,6 +87,9 @@ export function useGame() {
     try {
       // Enregistrer l'état actuel si c'est la fin de partie
       const isGameOver = gameState && !gameState.isActive && Object.keys(gameState.playerStates || {}).length > 0;
+      console.log("*************************************************");
+      console.log('isGameOver', isGameOver);
+      console.log("*************************************************");
       const isCurrentPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
 
       if (isGameOver || isCurrentPlayerGameOver) {

@@ -119,16 +119,24 @@ export class GameManager {
     if (game) {
       // Retirer le joueur de la partie
       game.removePlayer(playerId);
-
+      console.log(`Le joueur ${playerId} a quitté la partie ${game.roomName}`);
       // Si la partie est vide, la supprimer
       if (game.players.size === 0) {
         this.games.delete(gameId);
         this.roomNameToIdMap.delete(game.roomName);
+        console.log(`Partie ${game.roomName} supprimée car elle est vide`);
+      } else {
+        console.log(`Il reste ${game.players.size} joueurs dans la partie ${game.roomName}`);
+        if (game.players.size === 1) {
+          game.checkGameEnd();
+        }
       }
     }
 
     // Dissocier le joueur de la partie
     this.playerGameMap.delete(playerId);
+    console.log(`Le joueur ${playerId} a été dissocier de la partie`);
+    console.log(`il reste ${this.playerGameMap.size} joueurs dans les parties`);
 
     return game;
   }

@@ -158,6 +158,8 @@ export class SocketService {
             // Marquer la partie comme inactive
             game.isActive = false;
             game.endedAt = Date.now();
+          } else {
+            console.log('un joueur a quitté la partie, il reste des joueurs actifs, la partie continue');
           }
 
           this.gameManager.leaveGame(socket.id);
@@ -169,20 +171,28 @@ export class SocketService {
 
           // Récupérer le jeu mis à jour
           const updatedGame = this.gameManager.getGame(gameId);
+          console.log('updatedGame :', updatedGame);
 
           if (updatedGame) {
             // Notifier les autres joueurs dans cette partie du joueur qui part
+            console.log('notifying other players in this game that the player is leaving');
+            console.log('updatedGame.host :', updatedGame.host);
             this.io.to(gameId).emit('game:player_left', {
               gameId,
               playerId: socket.id,
               newHost: updatedGame.host // Envoyer le nouvel hôte
             });
+            console.log("PLAYER LEFT emited to all players in the game");
 
             // Envoyer l'état complet du jeu mis à jour (incluant le nouvel hôte)
+            console.log('notifying all users of the updated game state');
+            console.log('updatedGame.getState() :', updatedGame.getState());
             this.io.to(gameId).emit('game:state_updated', updatedGame.getState());
           }
 
           // Notifier tous les utilisateurs de la mise à jour des parties disponibles
+          console.log('notifying all users of the updated game list');
+          console.log('this.gameManager.getAvailableGames() :', this.gameManager.getAvailableGames());
           this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
         } catch (error) {
           callback({ success: false, error: error.message });

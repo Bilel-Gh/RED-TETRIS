@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
@@ -203,9 +203,25 @@ const GamePage = () => {
   const isGameOver = !gameState?.isActive && gameState?.playerStates && Object.keys(gameState.playerStates).length > 0;
 
   // Déterminer le nombre de joueurs encore en jeu
-  const activePlayers = gameState?.playerStates ?
-    Object.values(gameState.playerStates).filter(p => !p.gameOver).length :
-    0;
+  const activePlayers = useMemo(() => {
+    if (!gameState?.playerStates) return 0;
+
+    // Compter les joueurs qui ne sont pas en game over
+    const count = Object.values(gameState.playerStates)
+      .filter(p => p && p.gameOver !== true)
+      .length;
+
+    return count;
+  }, [gameState?.playerStates]);
+
+  // Log activePlayers only when it changes to avoid console spam
+  useEffect(() => {
+    console.log('activePlayers dans le GamePage:', activePlayers);
+    console.log('playerStates:', gameState?.playerStates ?
+      Object.entries(gameState.playerStates).map(([id, p]) =>
+        `${id}: gameOver=${p.gameOver}, isWinner=${p.isWinner}`
+      ) : 'undefined');
+  }, [activePlayers, gameState?.playerStates]);
 
   const isSoloGame = gameState?.isSoloGame;
 

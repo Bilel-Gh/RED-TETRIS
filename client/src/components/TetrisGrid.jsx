@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useGame } from '../hooks/useGame';
 import { useSelector } from 'react-redux';
 import './Tetris.css';
@@ -22,13 +22,20 @@ const TetrisGrid = ({ grid, currentPiece }) => {
   const { user } = useSelector(state => state.auth);
 
   // Grille par défaut si grid n'est pas défini
-  const defaultGrid = Array(20).fill().map(() => Array(10).fill('0'));
-  const [lastPiecePosition, setLastPiecePosition] = useState(null);
+  const defaultGrid = useMemo(() =>
+    Array(20).fill().map(() => Array(10).fill('0')),
+  []);
+
+  // Using refs to prevent unnecessary re-renders
+  const lastPiecePositionRef = useRef(null);
   const animationFrameRef = useRef(null);
-  const [displayGrid, setDisplayGrid] = useState(defaultGrid);
-  const [fallingCells, setFallingCells] = useState([]);
+  const displayGridRef = useRef(defaultGrid);
+  const fallingCellsRef = useRef([]);
   const autoDropIntervalRef = useRef(null);
+
+  // States that trigger renders
   const [isPenaltyShaking, setIsPenaltyShaking] = useState(false);
+  const [forceRender, setForceRender] = useState(0);
 
   // Surveiller les pénalités pour ajouter un effet de secousse
   useEffect(() => {
@@ -81,8 +88,6 @@ const TetrisGrid = ({ grid, currentPiece }) => {
 
     const dropSpeed = Math.max(baseSpeed - ((level - 1) * speedReduction), minSpeed);
 
-    // console.log(`Chute automatique configurée - Niveau: ${level}, Vitesse: ${dropSpeed}ms`);
-
     // Créer un nouvel intervalle pour la chute automatique
     autoDropIntervalRef.current = setInterval(() => {
       // Vérifier à nouveau avant chaque chute que le jeu est toujours actif
@@ -109,75 +114,96 @@ const TetrisGrid = ({ grid, currentPiece }) => {
     };
   }, [currentPiece, autoDrop, gameState, user?.id]);
 
-  // Mettre à jour la grille avec la pièce courante
-  useEffect(() => {
-    // Annuler toute animation précédente
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
+  // Function to update the grid without state setters
+  const updateGrid = () => {
+    // Skip update if game isn't active
+    if (!gameState?.isActive || gameState?.playerStates?.[user?.id]?.gameOver) {
+      return false;
     }
 
-    // Fonction pour mettre à jour la grille d'affichage
-    const updateGrid = () => {
-      // Créer une copie profonde de la grille
-      const newGrid = baseGrid.map(row => [...row]);
-      const newFallingCells = [];
+    // Créer une copie profonde de la grille
+    const newGrid = baseGrid.map(row => [...row]);
+    const newFallingCells = [];
 
-      // Ajouter la pièce courante à la grille (si elle existe)
-      if (currentPiece && currentPiece.shape) {
-        const { type, shape, x, y } = currentPiece;
-        // Vérifier si la position de la pièce a changé
-        const positionChanged = !lastPiecePosition ||
-                               lastPiecePosition.x !== x ||
-                               lastPiecePosition.y !== y;
+    // Ajouter la pièce courante à la grille (si elle existe)
+    if (currentPiece && currentPiece.shape) {
+      const { type, shape, x, y } = currentPiece;
+      // Vérifier si la position de la pièce a changé
+      const positionChanged = !lastPiecePositionRef.current ||
+                           lastPiecePositionRef.current.x !== x ||
+                           lastPiecePositionRef.current.y !== y;
 
-        if (positionChanged) {
-          setLastPiecePosition({ x, y, type });
-        }
+      if (positionChanged) {
+        lastPiecePositionRef.current = { x, y, type };
+      }
 
-        // Parcourir la forme de la pièce
-        for (let row = 0; row < shape.length; row++) {
-          for (let col = 0; col < shape[row].length; col++) {
-            // Vérifier si ce numéro représente une partie de la pièce
-            // Dans certaines implémentations, 0 = vide, 1+ = pièce
-            const isPartOfPiece = shape[row][col] !== 0;
+      // Parcourir la forme de la pièce
+      for (let row = 0; row < shape.length; row++) {
+        for (let col = 0; col < shape[row].length; col++) {
+          // Vérifier si ce numéro représente une partie de la pièce
+          const isPartOfPiece = shape[row][col] !== 0;
 
-            if (isPartOfPiece) {
-              const gridY = y + row;
-              const gridX = x + col;
+          if (isPartOfPiece) {
+            const gridY = y + row;
+            const gridX = x + col;
 
-              // S'assurer que la cellule est dans les limites de la grille
-              if (
-                gridY >= 0 &&
-                gridY < newGrid.length &&
-                gridX >= 0 &&
-                gridX < newGrid[0].length
-              ) {
-                newGrid[gridY][gridX] = type;
+            // S'assurer que la cellule est dans les limites de la grille
+            if (
+              gridY >= 0 &&
+              gridY < newGrid.length &&
+              gridX >= 0 &&
+              gridX < newGrid[0].length
+            ) {
+              newGrid[gridY][gridX] = type;
 
-                // Marquer cette cellule comme étant en chute si la pièce descend
-                if (positionChanged && lastPiecePosition && y > lastPiecePosition.y) {
-                  newFallingCells.push(`${gridY}-${gridX}`);
-                }
+              // Marquer cette cellule comme étant en chute si la pièce descend
+              if (positionChanged && lastPiecePositionRef.current &&
+                  y > lastPiecePositionRef.current.y) {
+                newFallingCells.push(`${gridY}-${gridX}`);
               }
             }
           }
         }
       }
+    }
 
-      setDisplayGrid(newGrid);
-      setFallingCells(newFallingCells);
-    };
+    // Update refs without triggering re-renders
+    displayGridRef.current = newGrid;
+    fallingCellsRef.current = newFallingCells;
+    return true;
+  };
 
-    // Mettre à jour la grille immédiatement
-    updateGrid();
+  // Set up the initial grid rendering
+  useEffect(() => {
+    if (updateGrid()) {
+      // Force a re-render to show the updated grid
+      setForceRender(prev => prev + 1);
+    }
+  }, [baseGrid, currentPiece, gameState?.isActive, user?.id]);
 
-    // Définir une animation pour les mises à jour
+  // Handle animation frame updates
+  useEffect(() => {
+    // Vérifier si le jeu est actif avant toute mise à jour
+    if (!gameState?.isActive || gameState?.playerStates?.[user?.id]?.gameOver) {
+      // Annuler toute animation en cours si le jeu n'est pas actif
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      return;
+    }
+
     const animationLoop = () => {
-      updateGrid();
+      if (updateGrid()) {
+        // Force re-render once every 10 frames to reduce UI updates
+        if (Math.random() < 0.1) {
+          setForceRender(prev => prev + 1);
+        }
+      }
       animationFrameRef.current = requestAnimationFrame(animationLoop);
     };
 
-    // Démarrer l'animation si le jeu est actif
+    // Démarrer l'animation si le jeu est actif et une pièce existe
     if (currentPiece) {
       animationFrameRef.current = requestAnimationFrame(animationLoop);
     }
@@ -186,16 +212,18 @@ const TetrisGrid = ({ grid, currentPiece }) => {
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
     };
-  }, [baseGrid, currentPiece, lastPiecePosition]);
+  }, [currentPiece, gameState?.isActive, user?.id]);
 
   // Dessiner la grille
   const renderGrid = () => {
-    return displayGrid.map((row, rowIndex) => (
+    // Use the grid from ref rather than state
+    return displayGridRef.current.map((row, rowIndex) => (
       <div key={`row-${rowIndex}`} className="grid-row">
         {row.map((cell, colIndex) => {
-          const isCellFalling = fallingCells.includes(`${rowIndex}-${colIndex}`);
+          const isCellFalling = fallingCellsRef.current.includes(`${rowIndex}-${colIndex}`);
           const isCellActive = currentPiece &&
                                colIndex >= currentPiece.x &&
                                colIndex < currentPiece.x + (currentPiece.shape[0]?.length || 0) &&

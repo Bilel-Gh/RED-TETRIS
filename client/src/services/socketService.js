@@ -131,18 +131,7 @@ const setupGameEvents = () => {
   if (!socket) return;
 
   // Supprimer les écouteurs existants pour éviter les doublons
-  socket.off('game:list_updated');
-  socket.off('game:player_joined');
-  socket.off('game:player_left');
-  socket.off('game:state_updated');
-  socket.off('game:player_updated');
-  socket.off('game:started');
-  socket.off('game:over');
-  socket.off('game:winner');
-  socket.off('game:player_gameover');
-  socket.off('game:penalty_applied');
-  socket.off('user:joined');
-  socket.off('user:left');
+  socket.removeAllListeners();
 
   // Mise à jour de la liste des parties
   socket.on('game:list_updated', (games) => {
@@ -159,6 +148,8 @@ const setupGameEvents = () => {
   // Un joueur a quitté la partie
   socket.on('game:player_left', (data) => {
     console.log('Un joueur a quitté la partie:', data);
+    console.log('PLAYER:LEFT CLIENT appelé !!!!!!!!!!!!!!!!!!');
+    console.log('nombre de joueurs dans la partie :', store.getState().game.players);
     store.dispatch(playerLeft({
       id: data.playerId,
       newHost: data.newHost // Transmettre l'information sur le nouvel hôte

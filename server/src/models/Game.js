@@ -57,6 +57,7 @@ export class Game {
 
     // Si l'hôte part, désignez un nouvel hôte
     if (this.host === playerId && this.players.size > 0) {
+      console.log('L\'hôte a quitté la partie, un nouveau hôte est sur le point detre sélectionné');
       // Sélectionner le joueur qui est là depuis le plus longtemps comme nouvel hôte
       let oldestPlayer = null;
       let oldestJoinTime = Infinity;
@@ -65,21 +66,25 @@ export class Game {
         if (player.joinedAt < oldestJoinTime) {
           oldestJoinTime = player.joinedAt;
           oldestPlayer = id;
+          console.log(`Le joueur ${player.username} (${player.id}) est le plus ancien et devient le nouveau hôte`);
         }
       }
 
       // Si on a trouvé un joueur, le désigner comme hôte
       if (oldestPlayer) {
         this.host = oldestPlayer;
+        console.log(`Le joueur ${this.players.get(oldestPlayer).username} (${oldestPlayer}) est le nouveau hôte`);
       } else {
         // Sinon, prendre le premier joueur disponible
         this.host = this.players.keys().next().value;
+        console.log(`Aucun joueur n'est disponible, le premier joueur disponible (${this.players.get(this.host).username} (${this.host})) est le nouveau hôte`);
       }
     }
 
     // Si tous les joueurs sont partis, mettre fin à la partie
     if (this.players.size === 0) {
       this.isActive = false;
+      console.log('Tout les joueurs ont quitté la partie, la partie est terminée');
     }
   }
 
