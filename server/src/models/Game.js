@@ -522,15 +522,20 @@ export class Game {
    * @returns {Object} État de la partie
    */
   getState() {
+    const playerStates = Array.from(this.players.values()).map(player => player.getState());
+
     return {
       id: this.id,
       roomName: this.roomName,
-      players: Array.from(this.players.values()).map(p => p.getState()),
+      players: playerStates,
       isActive: this.isActive,
+      isOver: this.isOver, // Assuming you might want to add this if it's a property
       host: this.host,
       createdAt: this.createdAt,
       startedAt: this.startedAt,
-      winner: this.winner || null
+      initialFallSpeedSetting: this.initialFallSpeedSetting,
+      // pieceSequence: this.pieceSequence, // Potentially large, consider if needed by client
+      // maxPlayers: this.maxPlayers, // Usually static, but could be included
     };
   }
 

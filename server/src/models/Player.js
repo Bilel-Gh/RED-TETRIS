@@ -104,6 +104,7 @@ export class Player {
     this.lastFallTime = 0;
     this.pieceQueueIndex = 0; // Réinitialiser aussi ici
     this.spectrum = Array(GRID_WIDTH || 10).fill(0);
+    this.isPlaying = false; // Explicitly reset isPlaying
   }
 
   /**

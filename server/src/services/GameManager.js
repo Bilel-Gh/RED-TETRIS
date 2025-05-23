@@ -156,13 +156,17 @@ export class GameManager {
    * @returns {boolean} true si la partie a démarré avec succès
    */
   startGame(gameId, playerId) {
+    // console.log(`[GameManager.startGame] Attempting to start game: ${gameId} by player: ${playerId}`);
     const game = this.games.get(gameId);
 
     if (!game) {
+      // console.error(`[GameManager.startGame] Game not found: ${gameId}`);
       throw new Error(`Partie ${gameId} introuvable`);
     }
+    // console.log(`[GameManager.startGame] Game found: ${game.id}, Host is: ${game.host}, Player attempting start: ${playerId}`);
 
     if (game.host !== playerId) {
+      // console.error(`[GameManager.startGame] Host check failed. Game host: ${game.host}, Player: ${playerId}`);
       throw new Error('Seul l\'hôte peut démarrer la partie');
     }
 
