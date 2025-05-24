@@ -3,3 +3,6 @@ client/node_modules
 node_modules
 .DS_Store
 *.pdf
+coverage
+client/coverage
+server/coverage

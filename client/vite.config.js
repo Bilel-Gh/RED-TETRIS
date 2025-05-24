@@ -21,7 +21,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    // setupFiles: './src/setupTests.js', // User may need to create/adjust this
+    setupFiles: './src/setupTests.js', // User may need to create/adjust this
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

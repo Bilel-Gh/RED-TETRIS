@@ -19,6 +19,7 @@ export const gameSlice = createSlice({
     fetchGamesSuccess: (state, action) => {
       state.status = 'succeeded';
       state.gameList = action.payload;
+      state.error = null; // Clear previous errors
     },
     fetchGamesFailure: (state, action) => {
       state.status = 'failed';
@@ -140,6 +141,11 @@ export const gameSlice = createSlice({
       console.log('state.players :', state.players);
       state.players = state.players.filter(p => p.id !== action.payload.id);
       console.log('state.players après filtrage :', state.players);
+
+      // Supprimer l'état du joueur de playerStates
+      if (state.gameState && state.gameState.playerStates && action.payload.id) {
+        delete state.gameState.playerStates[action.payload.id];
+      }
 
       // vérifier si il reste des joueurs dans la partie
       if (state.players.length === 1) {

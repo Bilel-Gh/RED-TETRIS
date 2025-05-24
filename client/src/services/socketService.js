@@ -31,8 +31,30 @@ let reconnectionTimer = null;
 // Variables pour stocker l'identifiant de l'utilisateur connecté
 let currentUserId = null;
 
+// List of game-specific and user-specific events handled by setupGameEvents
+const gameAndUserEventNames = [
+  'game:list_updated', 'game:player_joined', 'game:player_left',
+  'game:state_updated', 'game:player_updated', 'game:penalty_applied',
+  'game:started', 'game:over', 'game:winner', 'game:player_gameover',
+  'user:joined', 'user:left'
+];
+
+// Exported for testing purposes to reset internal state
+export const resetSocketState = () => {
+  if (socket && socket.connected) {
+    socket.disconnect();
+  }
+  socket = null;
+  store = null;
+  isConnectionInProgress = false;
+  reconnectionTimer = null;
+  currentUserId = null;
+  // If io.mockClear is available (from Vitest auto-mock or manual mock setup), uncomment:
+  // if (io && io.mockClear) io.mockClear();
+};
+
 // Initialiser la connexion Socket
-const connect = (reduxStore) => {
+export const connect = (reduxStore) => {
   store = reduxStore;
 
   // Si une connexion est déjà établie, on l'utilise
@@ -130,8 +152,10 @@ const cleanupSocket = () => {
 const setupGameEvents = () => {
   if (!socket) return;
 
-  // Supprimer les écouteurs existants pour éviter les doublons
-  socket.removeAllListeners();
+  // Supprimer les écouteurs existants UNIQUEMENT pour les événements gérés ici
+  gameAndUserEventNames.forEach(eventName => {
+    socket.off(eventName);
+  });
 
   // Mise à jour de la liste des parties
   socket.on('game:list_updated', (games) => {
@@ -220,8 +244,8 @@ const setupGameEvents = () => {
   });
 };
 
-// S'assurer que le socket est connecté
-const ensureConnection = () => {
+// Fonction pour s'assurer que la connexion est active
+export const ensureConnection = () => {
   return new Promise((resolve, reject) => {
     if (!socket) {
       try {
@@ -250,7 +274,7 @@ const ensureConnection = () => {
       // Écouter les erreurs de connexion
       socket.once('connect_error', (error) => {
         clearTimeout(timeout);
-        setupGameEvents();
+        // setupGameEvents(); // Removed this call as it's not logical here
         reject(error);
       });
 
@@ -262,8 +286,8 @@ const ensureConnection = () => {
   });
 };
 
-// Login avec un nom d'utilisateur
-const login = async (username) => {
+// Fonction de connexion de l'utilisateur
+export const login = async (username) => {
   try {
     await ensureConnection();
     console.log("Tentative de connexion avec le nom d'utilisateur:", username);
@@ -305,7 +329,7 @@ const login = async (username) => {
 };
 
 // Récupérer la liste des parties disponibles
-const getGames = async () => {
+export const getGames = async () => {
   try {
     await ensureConnection();
 
@@ -321,7 +345,7 @@ const getGames = async () => {
           resolve(response);
         } else {
           store.dispatch(fetchGamesFailure(response?.error || 'Erreur de récupération des parties'));
-          reject(response?.error || 'Erreur de récupération des parties');
+          reject({ success: false, error: response?.error || 'Erreur de récupération des parties' });
         }
       });
     });
@@ -332,7 +356,7 @@ const getGames = async () => {
 };
 
 // Créer une nouvelle partie
-const createGame = async (roomName, fallSpeedSetting) => {
+export const createGame = async (roomName, fallSpeedSetting) => {
   try {
     await ensureConnection();
 
@@ -367,7 +391,7 @@ const createGame = async (roomName, fallSpeedSetting) => {
 };
 
 // Rejoindre une partie existante
-const joinGame = async (gameId) => {
+export const joinGame = async (gameId) => {
   try {
     await ensureConnection();
 
@@ -399,8 +423,8 @@ const joinGame = async (gameId) => {
   }
 };
 
-// Quitter une partie
-const leaveGame = async () => {
+// Quitter la partie actuelle
+export const leaveGame = async () => {
   try {
     await ensureConnection();
 
@@ -426,8 +450,8 @@ const leaveGame = async () => {
   }
 };
 
-// Démarrer une partie
-const startGame = async () => {
+// Démarrer la partie (pour l'hôte)
+export const startGame = async () => {
   try {
     await ensureConnection();
 
@@ -495,8 +519,8 @@ const startGame = async () => {
   }
 };
 
-// Déplacer une pièce
-const movePiece = async (direction, isAutoMove = false) => {
+// Envoyer un mouvement au serveur
+export const movePiece = async (direction, isAutoMove = false) => {
   try {
     await ensureConnection();
 
@@ -566,8 +590,8 @@ const movePiece = async (direction, isAutoMove = false) => {
   }
 };
 
-// Déconnecter le socket
-const disconnect = () => {
+// Se déconnecter du serveur Socket.io
+export const disconnect = () => {
   console.log("Déconnexion du socket en cours...");
 
   // Annuler tout timer de reconnexion
@@ -600,8 +624,8 @@ const disconnect = () => {
   }
 };
 
-// Méthode de test de connexion
-const testConnection = () => {
+// Fonction pour tester la connexion
+export const testConnection = () => {
   if (!socket || !socket.connected) return;
 
   console.log("Test de connexion Socket.io...");
@@ -621,7 +645,7 @@ const testConnection = () => {
   });
 };
 
-// Réessayer la connexion après un délai
+// Planifier une tentative de reconnexion
 const scheduleReconnection = (delay = 2000) => {
   if (reconnectionTimer) {
     clearTimeout(reconnectionTimer);
@@ -634,8 +658,8 @@ const scheduleReconnection = (delay = 2000) => {
   }, delay);
 };
 
-// Exporter toutes les fonctions
-const socketService = {
+// Getters pour l'état de l'authentification et de la connexion
+export const socketService = {
   connect,
   login,
   getGames,
@@ -649,11 +673,12 @@ const socketService = {
   scheduleReconnection,
   getUserId: () => currentUserId,
   get isAuth() {
-    return socket && socket.auth;
+    return !!(socket && socket.auth);
   },
   get isConnected() {
-    return socket && socket.connected;
+    return !!(socket && socket.connected);
   }
 };
 
-export default socketService;
+// Automatically connect when the service is loaded, if a store is provided somehow or configured globally.
+// connect(); // This might need to be called explicitly from app setup e.g. in main.jsx or App.jsx
