@@ -4,7 +4,13 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    include: ['**/src/**/*.test.js', '**/src/**/*.test.jsx', '**/src/**/__tests__/**/*.test.js', '**/src/**/__tests__/**/*.test.jsx'],
+    include: [
+      'client/src/**/*.test.js',
+      'client/src/**/*.test.jsx',
+      'client/src/**/__tests__/**/*.test.js',
+      'client/src/**/__tests__/**/*.test.jsx',
+      'server/src/**/__tests__/**/*.test.js'
+    ],
     setupFiles: './client/src/setupTests.js',
     coverage: {
       provider: 'v8',
