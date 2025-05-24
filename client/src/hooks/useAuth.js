@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { loginStart, logout } from '../features/authSlice';
-import socketService from '../services/socketService';
+import { socketService } from '../services/socketService';
 import { useCallback } from 'react';
 
 export function useAuth() {

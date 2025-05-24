@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useAuth } from './useAuth';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as redux from 'react-redux';
-import socketService from '../services/socketService';
+import { socketService } from '../services/socketService';
 import { loginStart, logout as logoutAction } from '../features/authSlice'; // Renamed to avoid conflict
 
 // Mocks
@@ -16,11 +16,12 @@ vi.mock('react-redux', async (importOriginal) => {
 });
 
 vi.mock('../services/socketService', () => ({
-  __esModule: true, // Default export handling
-  default: {
+  socketService: {
     login: vi.fn(),
     disconnect: vi.fn(),
-  },
+    isAuth: false,
+    isConnected: false
+  }
 }));
 
 const mockLocalStorage = () => {

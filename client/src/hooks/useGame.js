@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { useCallback } from 'react';
-import socketService from '../services/socketService';
+import { socketService } from '../services/socketService';
 import {
   fetchGamesStart,
   fetchGamesSuccess,

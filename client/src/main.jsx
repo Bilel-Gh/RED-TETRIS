@@ -4,7 +4,7 @@ import { Provider } from 'react-redux'
 import { store } from './store'
 import App from './App.jsx'
 import './index.css'
-import socketService from './services/socketService'
+import { socketService } from './services/socketService'
 
 // Initialiser le service Socket
 socketService.connect(store);

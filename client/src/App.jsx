@@ -8,7 +8,7 @@ import LoginPage from './pages/LoginPage';
 import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
 import GameOverPage from './pages/GameOverPage';
-import socketService from './services/socketService';
+import { socketService } from './services/socketService';
 import './App.css';
 import './components/Tetris.css';
 

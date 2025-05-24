@@ -42,15 +42,16 @@ vi.mock('../hooks/useTheme', () => ({
 }));
 
 vi.mock('../services/socketService', () => ({
-  default: {
+  socketService: {
     connect: vi.fn(),
     disconnect: vi.fn(),
     emit: vi.fn(),
     on: vi.fn(),
     off: vi.fn(),
     isAuth: false,
+    isConnected: false,
     scheduleReconnection: vi.fn(),
-  },
+  }
 }));
 
 const mockStore = configureStore([]);
