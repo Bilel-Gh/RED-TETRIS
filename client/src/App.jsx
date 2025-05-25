@@ -7,7 +7,7 @@ import { useTheme } from './hooks/useTheme';
 import LoginPage from './pages/LoginPage';
 import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
-import GameOverPage from './pages/GameOverPage';
+// import GameOverPage from './pages/GameOverPage'; Commenting out GameOverPage
 import { socketService } from './services/socketService';
 import './App.css';
 import './components/Tetris.css';
@@ -159,6 +159,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* Commenting out GameOverPage Route
         <Route
           path="/game-over"
           element={
@@ -167,6 +168,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        */}
         <Route
           path="/:room/:playerName"
           element={<GameRouteHandler />}

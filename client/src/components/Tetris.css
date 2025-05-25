@@ -67,18 +67,6 @@
   backdrop-filter: blur(1px);
 }
 
-/* Cellules Ghost (ombre de la pièce) */
-.ghost-cell {
-  opacity: 0.3;
-  background-image: repeating-linear-gradient(
-    45deg,
-    currentColor,
-    currentColor 3px,
-    rgba(0, 0, 0, 0.1) 3px,
-    rgba(0, 0, 0, 0.1) 6px
-  );
-}
-
 /* Définir des couleurs vives et modernes pour les pièces */
 /* Pièce I - cyan */
 .cell-i {
