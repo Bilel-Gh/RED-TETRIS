@@ -228,6 +228,9 @@ const GamePage = () => {
   useEffect(() => {
     // Vérifier que nous avons toutes les données nécessaires
     if (!gameState || !user?.id || !gameState.playerStates?.[user.id]) {
+      // Si les données ne sont pas prêtes, s'assurer que les modales sont cachées
+      setShowVictoryModal(false);
+      setShowGameOverModal(false);
       return;
     }
 
@@ -235,30 +238,24 @@ const GamePage = () => {
     const playerState = gameState.playerStates[user.id];
 
     // Condition pour afficher la modale de victoire:
-    // 1. Le jeu a été actif (startedAt existe)
-    // 2. Le jeu est maintenant inactif ou le joueur est marqué comme gagnant
-    // 3. Le joueur est explicitement marqué comme gagnant
+    // Le jeu doit avoir démarré et le joueur doit être marqué comme gagnant.
     if (gameState.startedAt && playerState.isWinner === true) {
       setShowVictoryModal(true);
       setShowGameOverModal(false);
-      return;
     }
-
     // Condition pour afficher la modale de défaite:
-    // 1. Le jeu a été actif (startedAt existe)
-    // 2. Le joueur est explicitement marqué comme éliminé (gameOver)
-    if (gameState.startedAt && playerState.gameOver === true) {
+    // Le jeu doit avoir démarré et le joueur doit être marqué comme game over.
+    // On s'assure aussi de ne pas afficher la modale de défaite si celle de victoire est déjà affichée (edge case).
+    else if (gameState.startedAt && playerState.gameOver === true) {
       setShowGameOverModal(true);
       setShowVictoryModal(false);
-      return;
     }
-
     // Sinon, cacher les deux modales
-    if (showGameOverModal || showVictoryModal) {
+    else {
       setShowGameOverModal(false);
       setShowVictoryModal(false);
     }
-  }, [gameState, user, showGameOverModal, showVictoryModal]);
+  }, [gameState, user]);
 
   return (
     <PageTransition>
@@ -332,11 +329,11 @@ const GamePage = () => {
                   grid={gameState.grid}
                   currentPiece={gameState.currentPiece}
                 />
+              </div>
+              <div className="game-sidebar">
                 <div className="next-piece-side-container">
                   <NextPiece type={gameState.nextPiece} />
                 </div>
-              </div>
-              <div className="game-sidebar">
                 <div className="game-stats">
                   <div className="stat-item">
                     <span className="stat-label">Score</span>
@@ -434,22 +431,20 @@ const GamePage = () => {
                   </ul>
                 </div>
               </div>
-            </div>
-
-            <div className="opponents-container">
-              {Object.entries(gameState.playerStates || {})
-                .filter(([playerId]) => playerId !== user?.id)
-                .map(([playerId, playerState]) => (
-                  <OpponentGrid
-                    key={playerId}
-                    username={playerState.username || 'Adversaire'}
-                    grid={playerState.grid}
-                    score={playerState.score}
-                    gameOver={playerState.gameOver}
-                    spectrum={playerState.spectrum}
-                  />
-                ))
-              }
+              <div className="opponents-container">
+                {Object.entries(gameState.playerStates || {})
+                  .filter(([playerId]) => playerId !== user?.id)
+                  .map(([playerId, playerState]) => (
+                    <OpponentGrid
+                      key={playerId}
+                      username={playerState.username || 'Adversaire'}
+                      grid={playerState.grid}
+                      score={playerState.score}
+                      gameOver={playerState.gameOver}
+                      spectrum={playerState.spectrum}
+                    />
+                  ))}
+              </div>
             </div>
 
             {/* Notification de pénalité */}
