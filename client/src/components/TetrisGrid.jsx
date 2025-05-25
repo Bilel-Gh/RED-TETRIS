@@ -18,7 +18,7 @@ const COLORS = {
 };
 
 // Optimiser les cellules avec React.memo pour éviter les re-renders inutiles
-const GridCell = React.memo(({ type, isActive, isFalling, rowIndex, colIndex }) => {
+const GridCell = React.memo(function GridCell({ type, isActive, isFalling, rowIndex, colIndex }) {
   return (
     <div
       className={`
@@ -35,7 +35,7 @@ const GridCell = React.memo(({ type, isActive, isFalling, rowIndex, colIndex }) 
 });
 
 // Optimiser les lignes de la grille
-const GridRow = React.memo(({ row, rowIndex, currentPiece, fallingCells }) => {
+const GridRow = React.memo(function GridRow({ row, rowIndex, currentPiece, fallingCells }) {
   return (
     <div className="grid-row">
       {row.map((cell, colIndex) => {
@@ -197,12 +197,10 @@ const TetrisGrid = ({ grid, currentPiece }) => {
           const level = playerState?.level || gameState?.level || 1;
           const fallSpeedToUse = serverFallSpeed || Math.max(100, (playerState?.initialFallSpeedSetting === 'slow' ? 1500 : playerState?.initialFallSpeedSetting === 'fast' ? 700 : 1200) - ((level - 1) * 70));
 
-          // console.log(`[TetrisGrid] Using fallSpeed: ${fallSpeedToUse}, serverFallSpeed: ${serverFallSpeed}, level: ${level}, initialSetting: ${playerState?.initialFallSpeedSetting}`);
-
-          if (timestamp - lastAutoDropTimeRef.current >= fallSpeedToUse) {
-            // autoDrop(); // Ne plus appeler autoDrop ici
-            lastAutoDropTimeRef.current = timestamp;
-          }
+              if (timestamp - lastAutoDropTimeRef.current >= fallSpeedToUse) {
+                // autoDrop(); // Ne plus appeler autoDrop ici
+                lastAutoDropTimeRef.current = timestamp;
+              }
         }
         */
       }
@@ -228,15 +226,6 @@ const TetrisGrid = ({ grid, currentPiece }) => {
 
   // Vérifier si le joueur actuel est en game over
   const isPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
-
-  // Récupère explicitement l'état du joueur pour un meilleur debug
-  const playerState = gameState?.playerStates?.[user?.id];
-
-  useEffect(() => {
-    if (isPlayerGameOver) {
-      console.log('TetrisGrid: Joueur en Game Over:', playerState);
-    }
-  }, [isPlayerGameOver, playerState]);
 
   return (
     <div className={`tetris-grid-container ${isPlayerGameOver ? 'game-over' : ''} ${isPenaltyShaking ? 'penalty-shake' : ''}`}>

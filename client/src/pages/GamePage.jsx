@@ -44,7 +44,6 @@ const GamePage = () => {
       return;
     }
 
-    // Vérifier si le jeu est actif et que le joueur n'est pas en game over
     const playerState = gameState?.playerStates?.[user?.id];
     const isCurrentPlayerGameOver = !!playerState?.gameOver;
 
@@ -150,14 +149,11 @@ const GamePage = () => {
 
   // Gérer le départ du jeu
   const handleLeave = async () => {
-    console.log('Tentative de quitter la partie...');
     try {
-      const result = await handleLeaveGame();
-      console.log('Résultat de handleLeaveGame:', result);
+      await handleLeaveGame();
       navigate('/lobby');
     } catch (error) {
       console.error('Erreur lors de la tentative de quitter la partie:', error);
-      // En cas d'erreur, rediriger quand même vers le lobby
       navigate('/lobby');
     }
   };
@@ -178,9 +174,7 @@ const GamePage = () => {
     setStartGameError(null);
 
     try {
-      console.log("Tentative de démarrage de la partie...");
       const result = await startGame();
-      console.log("Résultat du démarrage:", result);
 
       if (!result.success) {
         setStartGameError(result.error || "Erreur lors du démarrage du jeu");
@@ -198,7 +192,6 @@ const GamePage = () => {
   };
 
   useEffect(() => {
-    console.log('GAME STATE', gameState);
   }, [gameState]);
 
   // Détecter si le jeu est terminé (pas d'activité)
@@ -218,24 +211,9 @@ const GamePage = () => {
 
   // Log activePlayers only when it changes to avoid console spam
   useEffect(() => {
-  console.log('activePlayers dans le GamePage:', activePlayers);
-    console.log('playerStates:', gameState?.playerStates ?
-      Object.entries(gameState.playerStates).map(([id, p]) =>
-        `${id}: gameOver=${p.gameOver}, isWinner=${p.isWinner}`
-      ) : 'undefined');
   }, [activePlayers, gameState?.playerStates]);
 
   const isSoloGame = gameState?.isSoloGame;
-
-  // Pour le débogage - afficher les états du jeu
-  useEffect(() => {
-    if (gameState && user) {
-      console.log('showGameOverModal', showGameOverModal);
-      console.log('isGameOver', isGameOver);
-      console.log('activePlayers', activePlayers);
-      console.log('GAME STATE', gameState.playerStates);
-    }
-  }, [gameState, isGameOver, showGameOverModal, activePlayers, isSoloGame, user]);
 
   // Générer l'URL de partage avec le nouveau format
   const generateShareUrl = () => {
@@ -256,22 +234,11 @@ const GamePage = () => {
     // Récupérer l'état du joueur actuel
     const playerState = gameState.playerStates[user.id];
 
-    // Ajouter des logs détaillés pour le débogage
-    console.log('Information modales:', {
-      isActive: gameState.isActive,
-      hasStarted: !!gameState.startedAt,
-      gameOver: playerState.gameOver,
-      isWinner: playerState.isWinner,
-      userId: user.id,
-      activePlayers: Object.values(gameState.playerStates).filter(p => !p.gameOver).length
-    });
-
     // Condition pour afficher la modale de victoire:
     // 1. Le jeu a été actif (startedAt existe)
     // 2. Le jeu est maintenant inactif ou le joueur est marqué comme gagnant
     // 3. Le joueur est explicitement marqué comme gagnant
     if (gameState.startedAt && playerState.isWinner === true) {
-      console.log('MODAL: Victoire pour', user.id);
       setShowVictoryModal(true);
       setShowGameOverModal(false);
       return;
@@ -281,7 +248,6 @@ const GamePage = () => {
     // 1. Le jeu a été actif (startedAt existe)
     // 2. Le joueur est explicitement marqué comme éliminé (gameOver)
     if (gameState.startedAt && playerState.gameOver === true) {
-      console.log('MODAL: Game Over pour', user.id);
       setShowGameOverModal(true);
       setShowVictoryModal(false);
       return;
@@ -289,7 +255,6 @@ const GamePage = () => {
 
     // Sinon, cacher les deux modales
     if (showGameOverModal || showVictoryModal) {
-      console.log('MODAL: Aucune modale nécessaire');
       setShowGameOverModal(false);
       setShowVictoryModal(false);
     }

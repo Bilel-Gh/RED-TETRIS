@@ -54,12 +54,10 @@ const LobbyPage = () => {
     }
   };
 
-  const handleJoinGame = async (gameId, roomName) => {
-    console.log("Tentative de rejoindre la partie:", roomName);
+  const handleJoinGame = async (gameId) => {
     setIsLoading(true);
     try {
       const result = await joinGame(gameId);
-      console.log("Résultat de joinGame:", result);
 
       if (result.success) {
         navigate(`/game/${result.game.roomName}`);
@@ -77,7 +75,6 @@ const LobbyPage = () => {
 
   const handleLogout = () => {
     logout();
-    // Rediriger vers la page de connexion
     navigate('/');
   };
 
@@ -195,7 +192,7 @@ const LobbyPage = () => {
                       <p className="game-players-count">{game.players.length} joueur(s) connecté(s)</p>
                     </div>
                     <button
-                      onClick={() => handleJoinGame(game.id, game.roomName)}
+                      onClick={() => handleJoinGame(game.id)}
                       className="join-game-button"
                     >
                       Rejoindre

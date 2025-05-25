@@ -22,7 +22,7 @@ const GameOverPage = () => {
         <div className="gameover-container">
           <div className="gameover-header">
             <h1 className="gameover-title">Partie terminée</h1>
-            <p className="gameover-subtitle">Merci d'avoir joué à RED TETRIS</p>
+            <p className="gameover-subtitle">Merci d&apos;avoir joué à RED TETRIS</p>
           </div>
 
           {gameResults ? (

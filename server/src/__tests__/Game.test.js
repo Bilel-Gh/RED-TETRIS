@@ -743,33 +743,87 @@ describe('Game', () => {
 
     it('ne devrait rien faire si le jeu n\'est pas actif', () => {
       game.isActive = false;
-      game.update(100);
+      game.update();
       expect(game.movePiece).not.toHaveBeenCalled();
     });
 
     it('devrait ignorer les joueurs non actifs ou en game over', () => {
       player1.isPlaying = false;
       player2.gameOver = true;
-      game.update(1000);
+      game.update();
       expect(game.movePiece).not.toHaveBeenCalled();
     });
 
     it('devrait faire tomber la pièce pour les joueurs actifs quand le temps est écoulé', () => {
-      Date.now.mockReturnValue(1000);
-      player1.lastFallTime = 0;
+      Date.now.mockReturnValue(1000); // Current time
+      player1.lastFallTime = 0;      // Last fall was long ago
+      player1.fallSpeed = 500;       // Fall speed is 500ms
       game.movePiece.mockReturnValueOnce({ player: player1.getState() });
 
-      Date.now.mockReturnValue(1000);
-      player2.lastFallTime = 500;
+      // player2 should not fall yet
+      player2.lastFallTime = 800; // Last fall was recent
+      player2.fallSpeed = 500;    // Fall speed is 500ms
 
-      const result = game.update(0);
+      const result = game.update();
 
       expect(game.movePiece).toHaveBeenCalledTimes(1);
       expect(game.movePiece).toHaveBeenCalledWith(player1, 0, 1);
-      expect(player1.lastFallTime).toBe(1000);
+      expect(player1.lastFallTime).toBe(1000); // Updated to current time
       expect(result.updatedPlayers).toContainEqual(player1.getState());
       expect(result.gameHasEnded).toBe(false);
       expect(game.checkGameEnd).toHaveBeenCalled();
+    });
+
+    it('devrait mettre à jour le score après une chute de pièce et effacement de ligne', () => {
+      Date.now.mockReturnValue(2000); // Time for the piece to fall
+      player1.lastFallTime = 0;
+      player1.fallSpeed = 1000;
+      player1.currentPiece = new Piece('I', 3, 18); // Positioned to complete a line at y=19
+      player1.grid[19].fill(0); // Ensure line 19 is clear first except for where the piece will land
+      // Piece 'I' is [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]]
+      // when currentPiece.y = 18, its 2nd row (1,1,1,1) will be at grid row 19.
+      // To complete a line, other cells of row 19 must be filled.
+      for(let i = 0; i < player1.grid[19].length; i++) {
+        if (i < 3 || i > 6) { // Fill cells not covered by 'I' piece at x=3
+            player1.grid[19][i] = 'L'; // Fill with some block type
+        }
+      }
+      player1.isPlaying = true; // Make sure player is active
+      player1.gameOver = false;
+
+      // We need checkCollision to return true for the downward move that locks the piece.
+      // The first call to checkCollision in movePiece(dx=0, dy=1) should be false (can move down one step).
+      // Then piece.y becomes 19. The lockPiece will then be called.
+      // OR, if currentPiece.y is already at the bottom (e.g. 19), checkCollision for dy=1 will be true.
+      // Let's place the piece at y=18, so it moves to y=19 and then locks.
+
+      // Spy on the actual checkCollision to control its behavior carefully only if needed.
+      // For now, let's assume the setup is enough for natural collision.
+      // The important part is that player1.addLines (mocked) gets called.
+      // player1.addLines IS ALREADY A MOCK (vi.fn()) from Player mock setup.
+
+      // No need to mock game.movePiece or game.checkLines here, let the real logic flow
+      // to ensure player.addLines (which is mocked and updates score) is called.
+
+      game.update(); // This should trigger the sequence of calls leading to score update
+
+      expect(player1.score).toBeGreaterThan(0);
+      // Optionally, verify addLines was called
+      expect(player1.addLines).toHaveBeenCalled();
+    });
+
+    it('devrait terminer le jeu si tous les joueurs sont en game over', () => {
+      player1.gameOver = true;
+      player2.gameOver = true;
+      // checkGameEnd will call game.stop() which sets isActive to false
+      game.checkGameEnd.mockImplementation(() => {
+        game.stop();
+        return true;
+      });
+
+      const result = game.update();
+      expect(result.gameHasEnded).toBe(true);
+      expect(game.isActive).toBe(false);
     });
   });
 
@@ -844,7 +898,7 @@ describe('Game', () => {
         { id: 'p1', name: 'User1', score: 100 },
         { id: 'p2', name: 'User2', score: 200 }
       ]);
-      expect(state.hasOwnProperty('isOver')).toBe(true);
+      expect(Object.prototype.hasOwnProperty.call(state, 'isOver')).toBe(true);
       expect(state.isOver).toBeUndefined();
     });
   });

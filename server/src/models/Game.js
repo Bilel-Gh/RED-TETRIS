@@ -177,7 +177,7 @@ export class Game {
       player.isPlaying = false;
 
       // Vérifier si tous les joueurs sont en game over
-      const isGameEnded = this.checkGameEnd();
+      this.checkGameEnd();
 
       // Retourner true pour indiquer que ce joueur est en game over
       return true;
@@ -447,11 +447,13 @@ export class Game {
   }
 
   /**
-   * Met à jour l'état du jeu pour un pas de temps
-   * @param {number} deltaTime - Temps écoulé depuis la dernière mise à jour (ms)
+   * Met à jour l'état du jeu (chute des pièces, etc.)
+   * @returns {Object|null} L'état du jeu si quelque chose a changé, sinon null
    */
-  update(deltaTime) {
-    if (!this.isActive) return;
+  update() {
+    if (!this.isActive) {
+      return null;
+    }
 
     const updatedPlayers = [];
 

@@ -1,3 +1,4 @@
+  // Disabling prop-types for this test file
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest'; // Ensure vi is imported
@@ -19,7 +20,7 @@ vi.mock('../hooks/useTheme', () => ({
 
 // Mock PageTransition component
 vi.mock('../components/PageTransition', () => ({
-  // eslint-disable-next-line react/prop-types
+   
   default: ({ children }) => <>{children}</>,
 }));
 

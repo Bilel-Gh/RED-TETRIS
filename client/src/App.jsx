@@ -14,7 +14,6 @@ import './components/Tetris.css';
 
 // Composant de détection de la connexion réseau
 const ConnectionMonitor = () => {
-  // Vérifier et gérer l'état de la connexion réseau
   useEffect(() => {
     const handleOnline = () => {
       console.log('Réseau en ligne, tentative de reconnexion...');
@@ -47,14 +46,12 @@ const ProtectedRoute = ({ children }) => {
     // tenter une reconnexion automatique
     const socket = socketService;
     if (isAuthenticated && user && user.username && !socket.isAuth) {
-      console.log('ProtectedRoute: tentative de reconnexion automatique pour', user.username);
       login(user.username).catch(err => {
         console.error('ProtectedRoute: échec de la reconnexion automatique', err);
       });
     }
   }, [isAuthenticated, user, login]);
 
-  // Montrer un état de chargement pendant la tentative de reconnexion
   if (status === 'loading') {
     return <div className="loading-container">Connexion en cours...</div>;
   }
@@ -96,12 +93,10 @@ const GameRouteHandler = () => {
     handleGameRouting();
   }, [room, playerName, user, login, joinGame, navigate, dispatch]);
 
-  // Rediriger vers la page de jeu une fois que tout est configuré
   if (user) {
     return <Navigate to={`/game/${room}`} replace />;
   }
 
-  // Pendant le chargement
   return <div className="loading-container">Chargement de la partie...</div>;
 };
 
@@ -120,7 +115,6 @@ function App() {
       try {
         const authData = JSON.parse(savedAuth);
         if (authData && authData.username) {
-          console.log('Tentative de reconnexion depuis localStorage:', authData.username);
           login(authData.username).catch(err => {
             console.error('Échec de la reconnexion depuis localStorage:', err);
             localStorage.removeItem('redTetrisAuth');
@@ -133,7 +127,6 @@ function App() {
     }
   }, [isAuthenticated, login]);
 
-  // Sauvegarder les données d'authentification quand l'utilisateur se connecte
   useEffect(() => {
     if (isAuthenticated && user) {
       localStorage.setItem('redTetrisAuth', JSON.stringify({

@@ -38,31 +38,6 @@ const baseInitialState = Object.freeze({
   error: null,
 });
 
-const mockPlayer = (id, overrides = {}) => ({
-  id,
-  username: `Player ${id}`,
-  grid: Array(20).fill(0).map(() => Array(10).fill('0')),
-  currentPiece: { shape: 'T', position: { x: 4, y: 0 } },
-  nextPiece: { shape: 'L', position: { x: 4, y: 0 } },
-  score: 0,
-  level: 1,
-  lines: 0,
-  gameOver: false,
-  isWinner: false,
-  isCurrentPlayer: false,
-  ...overrides
-});
-
-const mockGame = (id, players = [], overrides = {}) => ({
-  id,
-  name: `Game ${id}`,
-  players,
-  host: players.length > 0 ? players[0].id : null,
-  maxPlayers: 4,
-  status: 'pending',
-  ...overrides
-});
-
 describe('gameSlice', () => {
   describe('reducer', () => {
     it('should return the initial state when state is undefined', () => {

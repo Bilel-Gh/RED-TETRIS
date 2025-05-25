@@ -88,7 +88,6 @@ describe('GameManager', () => {
   let Game_m; // This will be the mocked Game class constructor
   let mockUuidV4_m; // This will be our specific mock function for uuid.v4
   let gameManager_m;
-  let dateNowSpy_m;
   let uuidCounter_m; // Counter for UUIDs
 
   beforeEach(async () => {
@@ -104,7 +103,7 @@ describe('GameManager', () => {
     GameManager_m = (await import('../services/GameManager.js')).GameManager;
     Game_m = (await import('../models/Game.js')).Game; // Gets the mocked Game constructor
 
-    dateNowSpy_m = vi.spyOn(Date, 'now').mockReturnValue(1000);
+    vi.spyOn(Date, 'now').mockReturnValue(1000);
     gameManager_m = new GameManager_m();
 
     // Clear mocks. Game is the constructor mock. mockUuidV4_m is the function mock.
@@ -139,7 +138,8 @@ describe('GameManager', () => {
       expect(gameManager_m.games.size).toBe(0);
       expect(gameManager_m.playerGameMap).toBeInstanceOf(Map);
       expect(gameManager_m.playerGameMap.size).toBe(0);
-      expect(gameManager_m.lastUpdateTime).toBe(1000);
+      expect(gameManager_m.lastUpdateTime).toBeInstanceOf(Map);
+      expect(gameManager_m.lastUpdateTime.size).toBe(0);
       expect(gameManager_m.updateInterval).toBeNull();
     });
   });
@@ -379,9 +379,6 @@ describe('GameManager', () => {
   describe('getAvailableGames', () => {
     it('devrait retourner toutes les parties non démarrées', () => {
       const game1_gag = gameManager_m.createGame('p1gag', 'u1gag', 'activeGameRoomGAG');
-
-      if (!vi.isMockFunction(game1_gag.start)) {
-      }
 
       gameManager_m.startGame(game1_gag.id, 'p1gag');
 

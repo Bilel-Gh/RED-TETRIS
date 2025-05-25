@@ -129,19 +129,23 @@ describe('useAuth Hook', () => {
 
   describe('logout function', () => {
     it('calls necessary cleanup and dispatches logout action', () => {
+      // Spies should be on the mock instances themselves
+      const removeItemSpyLocalStorage = vi.spyOn(localStorageMock, 'removeItem');
+      const removeItemSpySessionStorage = vi.spyOn(sessionStorageMock, 'removeItem');
+
+      // Ensure an initial authenticated state for logout to be meaningful
       mockAuthState({ user: { id: '1', username: 'testuser' }, isAuthenticated: true, status: 'succeeded', error: null });
+
       const { result } = renderHook(() => useAuth());
 
       act(() => {
         result.current.logout();
       });
 
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('redTetrisAuth');
-      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('redTetrisAuth');
+      expect(removeItemSpyLocalStorage).toHaveBeenCalledWith('redTetrisAuth');
+      expect(removeItemSpySessionStorage).toHaveBeenCalledWith('redTetrisAuth');
       expect(socketService.disconnect).toHaveBeenCalled();
-      expect(mockDispatch).toHaveBeenCalledWith(logoutAction()); // Use the imported logoutAction
-      expect(consoleLogSpy).toHaveBeenCalledWith('Déconnexion de l\'utilisateur');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Déconnexion terminée');
+      expect(mockDispatch).toHaveBeenCalledWith(logoutAction());
     });
   });
 

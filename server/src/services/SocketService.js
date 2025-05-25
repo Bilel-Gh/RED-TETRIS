@@ -71,7 +71,6 @@ export class SocketService {
 
       // Gestion du ping pour tester la connexion
       socket.on('ping', (timestamp, callback) => {
-        console.log(`Ping reçu de ${socket.id}`);
         callback({
           serverTime: Date.now(),
           clientTime: timestamp,
@@ -103,8 +102,6 @@ export class SocketService {
         try {
           const user = this.users.get(socket.id);
 
-          console.log(`[SocketService] game:create received: roomName='${roomName}', fallSpeedSetting='${fallSpeedSetting}'`); // Log input
-
           if (!user) {
             console.error('[SocketService] User not found for socket ID:', socket.id);
             throw new Error('Vous devez être connecté');
@@ -118,7 +115,6 @@ export class SocketService {
 
           // Nettoyer le nom de la salle (enlever espaces, caractères spéciaux, etc.)
           const cleanRoomName = roomName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
-          console.log(`[SocketService] cleanRoomName after sanitization: '${cleanRoomName}'`); // Log sanitized name
 
           // Valider le nom de la salle nettoyé
           if (!cleanRoomName || cleanRoomName.replace(/-/g, '') === '') {
@@ -134,9 +130,7 @@ export class SocketService {
           callback({ success: true, game: game.getState() });
 
           // Notifier les autres utilisateurs de la nouvelle partie disponible
-          console.log('Émission de l\'événement game:list_updated pour la creation de la partie', game.id);
           this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
-          console.log('Liste des parties mise à jour:', this.gameManager.getAvailableGames());
         } catch (error) {
           callback({ success: false, error: error.message });
         }
@@ -210,28 +204,20 @@ export class SocketService {
 
           // Récupérer le jeu mis à jour
           const updatedGame = this.gameManager.getGame(gameId);
-          console.log('updatedGame :', updatedGame);
 
           if (updatedGame) {
             // Notifier les autres joueurs dans cette partie du joueur qui part
-            console.log('notifying other players in this game that the player is leaving');
-            console.log('updatedGame.host :', updatedGame.host);
             this.io.to(gameId).emit('game:player_left', {
               gameId,
               playerId: socket.id,
               newHost: updatedGame.host // Envoyer le nouvel hôte
             });
-            console.log("PLAYER LEFT emited to all players in the game");
 
             // Envoyer l'état complet du jeu mis à jour (incluant le nouvel hôte)
-            console.log('notifying all users of the updated game state');
-            console.log('updatedGame.getState() :', updatedGame.getState());
             this.io.to(gameId).emit('game:state_updated', updatedGame.getState());
           }
 
           // Notifier tous les utilisateurs de la mise à jour des parties disponibles
-          console.log('notifying all users of the updated game list');
-          console.log('this.gameManager.getAvailableGames() :', this.gameManager.getAvailableGames());
           this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
         } catch (error) {
           callback({ success: false, error: error.message });
@@ -374,11 +360,6 @@ export class SocketService {
 
             // Vérifier si c'est la fin du jeu pour tous les joueurs
             if (game.checkGameEnd()) {
-              console.log('Émission de l\'événement game:over pour la partie', game.id, 'avec', game.players.size, 'joueurs');
-              console.log('État des joueurs:', Array.from(game.players.entries()).map(([id, p]) =>
-                `ID: ${id}, nom: ${p.username}, gameOver: ${p.gameOver}, isPlaying: ${p.isPlaying}, isWinner: ${p.isWinner}`
-              ));
-
               // Récupérer les infos pour tous les joueurs
               const playersInfo = Array.from(game.players.values()).map(p => p.getState());
 

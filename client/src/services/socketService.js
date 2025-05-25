@@ -59,13 +59,11 @@ export const connect = (reduxStore) => {
 
   // Si une connexion est déjà établie, on l'utilise
   if (socket && socket.connected) {
-    console.log('Socket déjà connecté avec ID:', socket.id);
     return;
   }
 
   // Si une connexion est en cours, on ne fait rien
   if (isConnectionInProgress) {
-    console.log('Connexion socket déjà en cours, ignoré');
     return;
   }
 
@@ -97,7 +95,6 @@ export const connect = (reduxStore) => {
     // Si un utilisateur était connecté avant une déconnexion, le reconnecter automatiquement
     const authState = store.getState().auth;
     if (authState.isAuthenticated && authState.user && authState.user.username && !socket.auth) {
-      console.log('Reconnexion automatique de l\'utilisateur:', authState.user.username);
       login(authState.user.username).catch(err => {
         console.error('Échec de la reconnexion automatique:', err);
       });
@@ -140,8 +137,6 @@ const cleanupSocket = () => {
 
       // Libérer le socket
       socket = null;
-
-      console.log('Socket précédent nettoyé');
     } catch (error) {
       console.error('Erreur lors du nettoyage du socket:', error);
     }
@@ -159,55 +154,44 @@ const setupGameEvents = () => {
 
   // Mise à jour de la liste des parties
   socket.on('game:list_updated', (games) => {
-    console.log('Réception de la liste des parties mise à jour:', games);
     store.dispatch(fetchGamesSuccess(games));
   });
 
   // Un joueur a rejoint la partie
   socket.on('game:player_joined', (data) => {
-    console.log('Un joueur a rejoint la partie:', data);
     store.dispatch(playerJoined(data.player));
   });
 
   // Un joueur a quitté la partie
   socket.on('game:player_left', (data) => {
-    console.log('Un joueur a quitté la partie:', data);
-    console.log('PLAYER:LEFT CLIENT appelé !!!!!!!!!!!!!!!!!!');
-    console.log('nombre de joueurs dans la partie :', store.getState().game.players);
     store.dispatch(playerLeft({
       id: data.playerId,
-      newHost: data.newHost // Transmettre l'information sur le nouvel hôte
+      newHost: data.newHost
     }));
   });
 
   // Mise à jour complète de l'état du jeu (après qu'un joueur soit parti par exemple)
   socket.on('game:state_updated', (gameState) => {
-    console.log('Mise à jour de l\'état du jeu reçue:', gameState);
     store.dispatch(updateGameState(gameState));
   });
 
   // Mise à jour de l'état d'un joueur (pièce, grille, etc.)
   socket.on('game:player_updated', (data) => {
-    // console.log('Mise à jour de l\'état du joueur reçue:', data.player?.id);
     store.dispatch(updateGameState(data));
   });
 
   // Des pénalités ont été appliquées
   socket.on('game:penalty_applied', (data) => {
-    console.log('Pénalité appliquée:', data);
-    // Afficher une notification ou un effet visuel pour indiquer la pénalité
     store.dispatch(penaltyApplied(data));
   });
 
   // La partie a démarré
   socket.on('game:started', (data) => {
-    console.log('La partie a démarré, données initiales:', data);
     store.dispatch(gameStarted(data));
   });
 
   // La partie est terminée (défaite)
   socket.on('game:over', (data) => {
-    console.log('La partie est terminée (défaite), résultats:', data);
     setTimeout(() => {
       store.dispatch(gameOver({
         ...data,
@@ -218,7 +202,6 @@ const setupGameEvents = () => {
 
   // La partie est gagnée
   socket.on('game:winner', (data) => {
-    console.log('Vous avez gagné la partie!', data);
     setTimeout(() => {
       store.dispatch(gameWinner({
         ...data,
@@ -229,18 +212,15 @@ const setupGameEvents = () => {
 
   // Un joueur spécifique a perdu (game over individuel)
   socket.on('game:player_gameover', (data) => {
-    console.log('Un joueur a perdu la partie:', data.player?.id);
     store.dispatch(playerGameOver(data));
   });
 
   // Un utilisateur s'est connecté
-  socket.on('user:joined', (userData) => {
-    console.log('Nouvel utilisateur connecté:', userData);
+  socket.on('user:joined', () => {
   });
 
   // Un utilisateur s'est déconnecté
-  socket.on('user:left', (userData) => {
-    console.log('Utilisateur déconnecté:', userData);
+  socket.on('user:left', () => {
   });
 };
 
@@ -274,7 +254,6 @@ export const ensureConnection = () => {
       // Écouter les erreurs de connexion
       socket.once('connect_error', (error) => {
         clearTimeout(timeout);
-        // setupGameEvents(); // Removed this call as it's not logical here
         reject(error);
       });
 
@@ -290,7 +269,6 @@ export const ensureConnection = () => {
 export const login = async (username) => {
   try {
     await ensureConnection();
-    console.log("Tentative de connexion avec le nom d'utilisateur:", username);
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -310,7 +288,6 @@ export const login = async (username) => {
 
           setupGameEvents();
 
-          console.log("Connexion réussie, user ID:", currentUserId);
           resolve(response);
         } else {
           console.error("Échec de la connexion:", response?.error || "Erreur inconnue");
@@ -360,7 +337,6 @@ export const createGame = async (roomName, fallSpeedSetting) => {
   try {
     await ensureConnection();
 
-    console.log(`Tentative de création de partie avec le nom "${roomName}" et vitesse "${fallSpeedSetting}"`);
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Délai de création de partie dépassé'));
@@ -369,7 +345,6 @@ export const createGame = async (roomName, fallSpeedSetting) => {
       socket.emit('game:create', { roomName, fallSpeedSetting }, (response) => {
         clearTimeout(timeout);
 
-        console.log('Réponse de la création de partie:', response);
         if (response && response.success) {
           store.dispatch(createGameSuccess(response.game));
           // Ajouter l'hôte à la liste des joueurs
@@ -395,7 +370,6 @@ export const joinGame = async (gameId) => {
   try {
     await ensureConnection();
 
-    console.log('Tentative de rejoindre la partie:', gameId);
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Délai pour rejoindre la partie dépassé'));
@@ -404,7 +378,6 @@ export const joinGame = async (gameId) => {
       socket.emit('game:join', gameId, (response) => {
         clearTimeout(timeout);
 
-        console.log('Réponse de joinGame:', response);
         if (response && response.success) {
           store.dispatch(joinGameSuccess({
             game: response.game,
@@ -428,7 +401,6 @@ export const leaveGame = async () => {
   try {
     await ensureConnection();
 
-    console.log('Quitter la partie');
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         resolve({ success: true, warning: 'Le serveur n\'a pas répondu mais la partie a été quittée localement' });
@@ -437,7 +409,6 @@ export const leaveGame = async () => {
       socket.emit('game:leave', (response) => {
         clearTimeout(timeout);
 
-        console.log('Réponse de leaveGame:', response);
         if (response && response.success) {
           resolve({ success: true });
         } else {
@@ -473,8 +444,6 @@ export const startGame = async () => {
       });
     }
 
-    console.log("Demande de démarrage du jeu");
-
     // Nombre maximum de tentatives
     const maxRetries = 2;
     let retryCount = 0;
@@ -483,7 +452,6 @@ export const startGame = async () => {
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           if (retryCount < maxRetries) {
-            console.log(`Tentative de démarrage du jeu échouée (timeout), nouvel essai ${retryCount + 1}/${maxRetries}`);
             retryCount++;
             clearTimeout(timeout);
             resolve(attemptStartGame()); // Réessayer
@@ -495,7 +463,6 @@ export const startGame = async () => {
         socket.emit('game:start', (response) => {
           clearTimeout(timeout);
 
-          console.log("Réponse du démarrage du jeu:", response);
           if (response && response.success) {
             resolve({ success: true });
           } else {
@@ -529,11 +496,6 @@ export const movePiece = async (direction, isAutoMove = false) => {
       return { success: false, error: "Vous devez être connecté" };
     }
 
-    // Utiliser le paramètre isAutoMove au lieu de arguments
-    if (!isAutoMove) {
-      console.log(`Déplacement de la pièce: ${direction}`);
-    }
-
     // Traitement local immédiat pour un retour plus réactif
     let didMove = false;
 
@@ -562,9 +524,6 @@ export const movePiece = async (direction, isAutoMove = false) => {
 
           // Si le serveur indique que la partie est terminée ou que le joueur est éliminé
           if (response.message) {
-            if (!isAutoMove) {
-              console.log(response.message);
-            }
             return resolve({
               success: true,
               result: response.result || { moved: false },
@@ -592,8 +551,6 @@ export const movePiece = async (direction, isAutoMove = false) => {
 
 // Se déconnecter du serveur Socket.io
 export const disconnect = () => {
-  console.log("Déconnexion du socket en cours...");
-
   // Annuler tout timer de reconnexion
   if (reconnectionTimer) {
     clearTimeout(reconnectionTimer);
@@ -628,8 +585,6 @@ export const disconnect = () => {
 export const testConnection = () => {
   if (!socket || !socket.connected) return;
 
-  console.log("Test de connexion Socket.io...");
-
   // Ajouter un timeout pour éviter de bloquer si le serveur ne répond pas
   const pingTimeout = setTimeout(() => {
     console.error('Pas de réponse du serveur au ping (timeout)');
@@ -637,9 +592,7 @@ export const testConnection = () => {
 
   socket.emit('ping', Date.now(), (response) => {
     clearTimeout(pingTimeout);
-    if (response) {
-      console.log('Connexion Socket.io confirmée, réponse:', response);
-    } else {
+    if (!response) {
       console.error('Pas de réponse du serveur au ping');
     }
   });
@@ -679,6 +632,3 @@ export const socketService = {
     return !!(socket && socket.connected);
   }
 };
-
-// Automatically connect when the service is loaded, if a store is provided somehow or configured globally.
-// connect(); // This might need to be called explicitly from app setup e.g. in main.jsx or App.jsx

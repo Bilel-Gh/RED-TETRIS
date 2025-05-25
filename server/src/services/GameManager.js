@@ -12,7 +12,7 @@ export class GameManager {
     this.broadcastPlayerUpdatesCallback = broadcastPlayerUpdatesCallback || (() => {}); // Fallback
 
     // Boucle de mise à jour du jeu
-    this.lastUpdateTime = Date.now();
+    this.lastUpdateTime = new Map();
     this.updateInterval = null;
   }
 
@@ -24,13 +24,10 @@ export class GameManager {
     if (this.updateInterval) return;
 
     this.updateInterval = setInterval(() => {
-      const currentTime = Date.now();
-      const deltaTime = currentTime - this.lastUpdateTime;
-
       // Mettre à jour toutes les parties actives
       for (const game of this.games.values()) {
         if (game.isActive) {
-          const updateResult = game.update(deltaTime);
+          const updateResult = game.update();
           if (updateResult && updateResult.updatedPlayers && updateResult.updatedPlayers.length > 0) {
             if (this.broadcastPlayerUpdatesCallback) {
               this.broadcastPlayerUpdatesCallback(game.id, updateResult.updatedPlayers);
@@ -39,8 +36,6 @@ export class GameManager {
           // Gérer gameHasEnded si nécessaire (pas implémenté ici pour l'instant)
         }
       }
-
-      this.lastUpdateTime = currentTime;
     }, interval);
   }
 
@@ -156,17 +151,13 @@ export class GameManager {
    * @returns {boolean} true si la partie a démarré avec succès
    */
   startGame(gameId, playerId) {
-    // console.log(`[GameManager.startGame] Attempting to start game: ${gameId} by player: ${playerId}`);
     const game = this.games.get(gameId);
 
     if (!game) {
-      // console.error(`[GameManager.startGame] Game not found: ${gameId}`);
       throw new Error(`Partie ${gameId} introuvable`);
     }
-    // console.log(`[GameManager.startGame] Game found: ${game.id}, Host is: ${game.host}, Player attempting start: ${playerId}`);
 
     if (game.host !== playerId) {
-      // console.error(`[GameManager.startGame] Host check failed. Game host: ${game.host}, Player: ${playerId}`);
       throw new Error('Seul l\'hôte peut démarrer la partie');
     }
 

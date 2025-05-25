@@ -72,10 +72,7 @@ export function useGame() {
         return { success: false, error };
       }
 
-      console.log("Tentative de rejoindre la partie avec ID:", gameId);
       const response = await socketService.joinGame(gameId);
-      console.log("Réponse de socketService.joinGame:", response);
-
       return response;
     } catch (error) {
       console.error("Erreur lors de la tentative de rejoindre la partie:", error);
@@ -86,19 +83,9 @@ export function useGame() {
   const handleLeaveGame = async () => {
     try {
       // Enregistrer l'état actuel si c'est la fin de partie
-      const isGameOver = gameState && !gameState.isActive && Object.keys(gameState.playerStates || {}).length > 0;
-      console.log("*************************************************");
-      console.log('isGameOver', isGameOver);
-      console.log("*************************************************");
-      const isCurrentPlayerGameOver = gameState?.playerStates?.[user?.id]?.gameOver;
-
-      if (isGameOver || isCurrentPlayerGameOver) {
-        console.log('Enregistrement des résultats de fin de partie avant de quitter');
-      }
 
       // Tenter de quitter proprement en utilisant le socket
       const response = await socketService.leaveGame();
-      console.log('Réponse de socketService.leaveGame:', response);
 
       // Nettoyer l'état local quel que soit le résultat
       dispatch(leaveGame());
@@ -114,7 +101,6 @@ export function useGame() {
   };
 
   const startGame = async () => {
-    console.log("Hook useGame: appel de startGame");
     try {
       // Vérifier si le service socket est connecté
       if (!socketService.isConnected) {
@@ -153,8 +139,6 @@ export function useGame() {
         socketService.startGame(),
         timeoutPromise
       ]);
-
-      console.log("Hook useGame: réponse de socketService.startGame:", response);
 
       // Vérifier si la réponse contient une erreur
       if (response && !response.success) {

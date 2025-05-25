@@ -40,7 +40,7 @@ const LoginScreen = () => {
     <form onSubmit={handleSubmit} className="login-form">
       <div className="login-field">
         <label htmlFor="username" className="username-label">
-          Nom d'utilisateur
+          Nom d&apos;utilisateur
         </label>
         <input
           type="text"

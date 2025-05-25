@@ -20,12 +20,10 @@ export function useAuth() {
     // Éviter les dispatches multiples si déjà en chargement
     if (status !== 'loading') {
       dispatch(loginStart());
-      console.log('Tentative de connexion pour:', username);
     }
 
     try {
       const userData = await socketService.login(username);
-      console.log('Connexion réussie pour:', username);
       return userData;
     } catch (error) {
       console.error('Échec de la connexion:', error);
@@ -34,8 +32,6 @@ export function useAuth() {
   }, [dispatch, isAuthenticated, status, user]);
 
   const handleLogout = useCallback(() => {
-    console.log('Déconnexion de l\'utilisateur');
-
     // Nettoyer les données d'authentification stockées
     localStorage.removeItem('redTetrisAuth');
     sessionStorage.removeItem('redTetrisAuth');
@@ -45,8 +41,6 @@ export function useAuth() {
 
     // Mettre à jour l'état Redux
     dispatch(logout());
-
-    console.log('Déconnexion terminée');
   }, [dispatch]);
 
   return {

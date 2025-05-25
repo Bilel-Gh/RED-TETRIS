@@ -20,12 +20,12 @@ const httpServer = createServer(fastify.server)
 const socketService = new SocketService(httpServer)
 
 // Route de test
-fastify.get('/', async (request, reply) => {
+fastify.get('/', async (_request, _reply) => {
   return { status: 'online', message: 'RED-TETRIS Server is running' }
 })
 
 // Route pour lister les parties disponibles
-fastify.get('/games', async (request, reply) => {
+fastify.get('/games', async (_request, _reply) => {
   return { games: socketService.gameManager.getAvailableGames() }
 })
 
