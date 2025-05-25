@@ -130,14 +130,17 @@ export const gameSlice = createSlice({
         delete state.gameState.playerStates[action.payload.id];
       }
 
-      // vérifier si il reste des joueurs dans la partie
-      if (state.players.length === 1) {
-        // mettre ce joueur en winner
-        state.gameState.playerStates[state.players[0].id].isWinner = true;
-        state.gameState.isActive = false;
-        state.gameState.endedAt = Date.now();
-        state.gameState.winner = state.players[0].id;
-        state.gameState.isWinner = true;
+      // Vérifier si il reste des joueurs dans la partie et si la partie avait commencé
+      if (state.players.length === 1 && state.gameState && state.gameState.playerStates[state.players[0].id]) {
+        // Déclarer le joueur restant comme gagnant seulement si la partie avait effectivement commencé
+        if (state.gameState.startedAt) {
+          state.gameState.playerStates[state.players[0].id].isWinner = true;
+          state.gameState.playerStates[state.players[0].id].gameOver = false; // Un gagnant n'est pas game over
+          state.gameState.isActive = false;
+          state.gameState.endedAt = Date.now();
+          state.gameState.winner = state.players[0].id;
+          // state.gameState.isWinner = true; // This global flag might be redundant
+        }
       }
 
       if (action.payload.newHost && state.currentGame) {
@@ -236,83 +239,104 @@ export const gameSlice = createSlice({
         // Mettre à jour l'état du joueur spécifique en game over
         state.gameState.playerStates[playerId] = {
           ...state.gameState.playerStates[playerId],
-          ...action.payload.player,
+          ...action.payload.player, // Contient l'état final du joueur fourni par la logique de jeu
           gameOver: true,
           isWinner: false  // Un joueur en game over n'est jamais un gagnant
         };
 
-        // Vérifier s'il reste un seul joueur actif (non game over), qui serait le gagnant
-        const activePlayers = Object.entries(state.gameState.playerStates)
-          .filter(([, playerState]) => !playerState.gameOver);
+        // Recalculer les joueurs actifs (ceux qui ne sont pas game over)
+        const activePlayersList = Object.values(state.gameState.playerStates)
+          .filter(pState => pState && !pState.gameOver);
 
-        // S'il reste exactement un joueur actif, c'est le gagnant
-        if (activePlayers.length === 1) {
-          const winnerId = activePlayers[0][0];
-
-          // Marquer ce joueur comme gagnant
-          state.gameState.playerStates[winnerId].isWinner = true;
-          state.gameState.winner = winnerId;
-        }
-
-        // Vérifier si tous les joueurs sont en game over
-        const allPlayersGameOver = Object.values(state.gameState.playerStates)
-          .every(player => player.gameOver);
-
-        // Si tous les joueurs sont en game over, marquer la partie comme terminée
-        if (allPlayersGameOver) {
+        if (activePlayersList.length === 1) {
+          // Exactement un joueur reste actif : il est le gagnant, la partie se termine.
+          const winner = activePlayersList[0];
+          if (winner && state.gameState.playerStates[winner.id]) { // S'assurer que l'état du gagnant existe
+            state.gameState.playerStates[winner.id].isWinner = true;
+            state.gameState.playerStates[winner.id].gameOver = false; // Le gagnant n'est pas en game over
+            state.gameState.winner = winner.id;
+          }
+          state.gameState.isActive = false; // La partie est maintenant inactive
+          state.gameState.endedAt = Date.now();
+        } else if (activePlayersList.length === 0) {
+          // Aucun joueur ne reste actif : la partie se termine.
           state.gameState.isActive = false;
           state.gameState.endedAt = Date.now();
+          state.gameState.winner = null; // Pas de gagnant si tous sont en game over
         }
+        // Si activePlayersList.length > 1, la partie continue (isActive reste true, sauf si déjà false)
       }
     },
     gameStarted: (state, action) => {
+      const actualStartedAt = action.payload.startedAt || Date.now();
+
       state.currentGame = {
         ...state.currentGame,
         isActive: true,
-        startedAt: action.payload.startedAt
+        startedAt: actualStartedAt
       };
 
-      // Initialiser l'état du jeu si des données sont fournies
+      // Initialiser l'état du jeu si des données sont fournies ou créer un état par défaut
       if (action.payload.initialState) {
-        state.gameState = action.payload.initialState;
-
-        // S'assurer que l'état du jeu contient toutes les propriétés nécessaires
-        if (!state.gameState.playerStates) {
-          state.gameState.playerStates = {};
-        }
-
-        // S'assurer qu'aucun joueur n'est marqué comme gagnant au démarrage
-        state.gameState.isWinner = false;
-        state.gameState.winner = null;
-
-        // Réinitialiser le statut de gagnant pour chaque joueur
-        Object.keys(state.gameState.playerStates).forEach(playerId => {
-          if (state.gameState.playerStates[playerId]) {
-            state.gameState.playerStates[playerId].isWinner = false;
-          }
-        });
-
-        // si le joueur est seul, on met à jour l'état du jeu
-        if (action.payload.initialState.players.length === 1) {
-          state.gameState.isSoloGame = true;
-        } else {
-          state.gameState.isSoloGame = false;
-        }
-
-        // Marquer le jeu comme actif
-        state.gameState.isActive = true;
+        state.gameState = {
+          ...action.payload.initialState, // Spread initial state first
+          isActive: true,
+          startedAt: action.payload.initialState.startedAt || actualStartedAt,
+          isWinner: false, // Explicitly reset
+          winner: null     // Explicitly reset
+        };
       } else {
         // Initialiser un état de jeu par défaut si nécessaire
         state.gameState = {
           isActive: true,
-          grid: Array(20).fill().map(() => Array(10).fill("0")),
+          grid: Array(20).fill().map(() => Array(10).fill("0")), // Default grid
           score: 0,
           level: 0,
           lines: 0,
-          playerStates: {},
-          isSoloGame: true
+          playerStates: {}, // Initialiser playerStates
+          isSoloGame: true, // Sera ajusté ci-dessous si possible
+          startedAt: actualStartedAt,
+          isWinner: false,
+          winner: null
         };
       }
+
+      // S'assurer que playerStates existe
+      if (!state.gameState.playerStates) {
+        state.gameState.playerStates = {};
+      }
+
+      // Initialiser les états des joueurs s'ils sont fournis dans initialState.players
+      // et s'assurer que leur statut gameOver/isWinner est réinitialisé.
+      if (action.payload.initialState && action.payload.initialState.players) {
+        action.payload.initialState.players.forEach(player => {
+          if (player && player.id) {
+            state.gameState.playerStates[player.id] = {
+              ...(state.gameState.playerStates[player.id] || {}), // Conserve l'état existant si fusion
+              ...player, // Applique les nouvelles données du joueur
+              isWinner: false,
+              gameOver: false // Réinitialiser gameOver au démarrage
+            };
+          }
+        });
+      } else {
+        // Si pas de initialState.players, s'assurer que les playerStates existants sont réinitialisés
+         Object.keys(state.gameState.playerStates).forEach(playerId => {
+          if (state.gameState.playerStates[playerId]) {
+            state.gameState.playerStates[playerId].isWinner = false;
+            state.gameState.playerStates[playerId].gameOver = false;
+          }
+        });
+      }
+
+      // Déterminer isSoloGame basé sur le nombre de joueurs dans playerStates
+      // Cela doit se faire après que playerStates soit peuplé.
+      const numPlayers = Object.keys(state.gameState.playerStates).length;
+      state.gameState.isSoloGame = numPlayers <= 1;
+
+
+      // Marquer le jeu comme actif (déjà fait mais pour être sûr)
+      state.gameState.isActive = true;
     },
     // Actions pour le mouvement des pièces
     movePieceLeft: () => {

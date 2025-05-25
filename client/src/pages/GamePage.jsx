@@ -431,7 +431,10 @@ const GamePage = () => {
                   </ul>
                 </div>
               </div>
-              <div className="opponents-container">
+
+              {/* Conditionally render opponents-container only if not a solo game */}
+              {!isSoloGame && (
+                <div className="opponents-container">
                 {Object.entries(gameState.playerStates || {})
                   .filter(([playerId]) => playerId !== user?.id)
                   .map(([playerId, playerState]) => (
@@ -444,7 +447,8 @@ const GamePage = () => {
                       spectrum={playerState.spectrum}
                     />
                   ))}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Notification de pénalité */}
@@ -486,14 +490,14 @@ const GamePage = () => {
                 <p className="game-over-message-wait">
                   {isSoloGame
                     ? `La partie solo est terminée !`
-                    : activePlayers > 0
+                    : (gameState && gameState.isActive && activePlayers > 0)
                       ? "Vous pouvez observer la partie en cours ou quitter maintenant."
                       : "La partie est maintenant terminée pour tous les joueurs."
                   }
                 </p>
               </div>
               <div className="game-over-modal-footer">
-                {!isSoloGame && activePlayers > 0 && (
+                {!isSoloGame && gameState && gameState.isActive && activePlayers > 0 && (
                   <button
                     className="game-over-close-btn"
                     onClick={() => setShowGameOverModal(false)}

@@ -192,22 +192,18 @@ const setupGameEvents = () => {
 
   // La partie est terminée (défaite)
   socket.on('game:over', (data) => {
-    setTimeout(() => {
-      store.dispatch(gameOver({
-        ...data,
-        isWinner: false
-      }));
-    }, 100);
+    store.dispatch(gameOver({
+      ...data,
+      isWinner: false
+    }));
   });
 
   // La partie est gagnée
   socket.on('game:winner', (data) => {
-    setTimeout(() => {
-      store.dispatch(gameWinner({
-        ...data,
-        isWinner: true
-      }));
-    }, 100);
+    store.dispatch(gameWinner({
+      ...data,
+      isWinner: true
+    }));
   });
 
   // Un joueur spécifique a perdu (game over individuel)
