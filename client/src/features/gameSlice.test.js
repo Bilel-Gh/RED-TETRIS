@@ -364,7 +364,60 @@ describe('gameSlice', () => {
         vi.useRealTimers();
       });
 
-      it('should remove a player and their state, new host assigned', () => {
+      it('should remove a player from the list and from playerStates', () => {
+        const p1 = { id: '1', username: 'Player1' };
+        const p2 = { id: '2', username: 'Player2' };
+        const previousState = {
+          ...baseInitialState,
+          players: [p1, p2],
+          gameState: {
+            isActive: true,
+            playerStates: {
+              [p1.id]: { ...p1, score: 10 },
+              [p2.id]: { ...p2, score: 20 },
+            },
+          },
+        };
+        const result = gameReducer(previousState, playerLeft({ id: p2.id }));
+        expect(result.players).toEqual([p1]);
+        expect(result.gameState.playerStates[p2.id]).toBeUndefined();
+        expect(result.gameState.playerStates[p1.id]).toBeDefined();
+      });
+
+      it('should end game and declare winner if only one player remains after another leaves', () => {
+        const p1 = { id: 'p1', username: 'Winner' };
+        const p2 = { id: 'p2', username: 'Leaver' };
+        const mockDate = new Date(2023, 10, 10, 12, 0, 0);
+        vi.setSystemTime(mockDate);
+
+        const previousState = {
+          ...baseInitialState,
+          currentGame: { id: 'g1', name: 'Test Game', host: p1.id },
+          players: [p1, p2],
+          gameState: {
+            isActive: true,
+            startedAt: mockDate.getTime(),
+            playerStates: {
+              [p1.id]: { ...p1, isWinner: false, gameOver: false },
+              [p2.id]: { ...p2, isWinner: false, gameOver: false },
+            },
+            isWinner: false,
+            winner: null,
+          },
+        };
+        const action = playerLeft({ id: p2.id });
+        const result = gameReducer(previousState, action);
+
+        expect(result.players).toEqual([p1]);
+        expect(result.gameState.isActive).toBe(false);
+        expect(result.gameState.winner).toBe(p1.id);
+        expect(result.gameState.playerStates[p1.id].isWinner).toBe(true);
+        expect(result.gameState.playerStates[p1.id].gameOver).toBe(false);
+        expect(result.gameState.endedAt).toBe(mockDate.getTime());
+        expect(result.gameState.playerStates[p2.id]).toBeUndefined();
+      });
+
+      it('should assign a new host if the host leaves and other players remain', () => {
         const p1 = { id: 'p1', name: 'Host' };
         const p2 = { id: 'p2', name: 'Player 2' };
         const p3 = { id: 'p3', name: 'Player 3' };
@@ -415,38 +468,6 @@ describe('gameSlice', () => {
         expect(result.currentGame.host).toEqual(p1.id); // Host remains p1
       });
 
-
-      it('should end game and declare winner if only one player remains after another leaves', () => {
-        const p1 = { id: 'p1', name: 'Winner' };
-        const p2 = { id: 'p2', name: 'Leaver' };
-        const mockDate = new Date(2023, 10, 10, 12, 0, 0);
-        vi.setSystemTime(mockDate);
-
-        const previousState = {
-          ...baseInitialState,
-          currentGame: { id: 'g1', name: 'Test Game', host: p1.id },
-          players: [p1, p2],
-          gameState: {
-            isActive: true,
-            playerStates: {
-              [p1.id]: { ...p1, isWinner: false, gameOver: false },
-              [p2.id]: { ...p2, isWinner: false, gameOver: false },
-            },
-            isWinner: false,
-            winner: null,
-          },
-        };
-        const action = playerLeft({ id: p2.id }); // p2 leaves
-        const result = gameReducer(previousState, action);
-
-        expect(result.players).toEqual([p1]);
-        expect(result.gameState.isActive).toBe(false);
-        expect(result.gameState.winner).toBe(p1.id);
-        expect(result.gameState.isWinner).toBe(true);
-        expect(result.gameState.playerStates[p1.id].isWinner).toBe(true);
-        expect(result.gameState.endedAt).toBe(mockDate.getTime());
-        expect(result.gameState.playerStates[p2.id]).toBeUndefined(); // p2's state removed
-      });
 
       it('should not change host if non-host player left and no newHost in payload', () => {
         const p1 = { id: 'p1', name: 'Host' };
@@ -727,93 +748,99 @@ describe('gameSlice', () => {
 
     // playerGameOver
     describe('playerGameOver', () => {
-      let consoleLogSpy;
-      const p1 = { id: 'p1', username: 'Player1' };
-      const p2 = { id: 'p2', username: 'Player2' };
-      const p3 = { id: 'p3', username: 'Player3' };
-
-      beforeEach(() => {
-        consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-        vi.useFakeTimers();
-      });
-
-      afterEach(() => {
-        consoleLogSpy.mockRestore();
-        vi.useRealTimers();
-      });
-
-      it('should mark player as gameOver and isWinner false', () => {
+      it('should mark a player as game over and not winner', () => {
+        const p1 = { id: 'p1', username: 'Player1', score: 100, level: 5, lines: 50 };
         const previousState = {
           ...baseInitialState,
           gameState: {
             isActive: true,
             playerStates: {
-              [p1.id]: { ...p1, score: 100, gameOver: false, isWinner: false },
-              [p2.id]: { ...p2, score: 200, gameOver: false, isWinner: false },
+              [p1.id]: { ...p1, isWinner: false, gameOver: false },
             },
-            winner: null,
+            winner: null, // Initialize winner to null in previousState
           },
         };
-        const payload = { player: { id: p1.id, score: 100 } }; // p1 is out
-        const result = gameReducer(previousState, playerGameOver(payload));
+        const actionPayload = { player: { ...p1, score: 120, gameOver: true, isWinner: false } };
+        const result = gameReducer(previousState, playerGameOver(actionPayload));
 
         expect(result.gameState.playerStates[p1.id].gameOver).toBe(true);
         expect(result.gameState.playerStates[p1.id].isWinner).toBe(false);
-        expect(result.gameState.playerStates[p1.id].score).toBe(100);
-        expect(result.gameState.playerStates[p2.id].gameOver).toBe(false); // p2 still active
-        expect(result.gameState.isActive).toBe(true); // Game still active
+        expect(result.gameState.playerStates[p1.id].score).toBe(120);
+        expect(result.gameState.isActive).toBe(true);
+        expect(result.gameState.winner).toBeNull(); // Should now pass as previousState.gameState.winner was null
       });
 
-      it('should declare a winner if only one player remains active', () => {
+      // THIS TEST IS REVISED: playerGameOver no longer declares a winner or ends the game directly.
+      it('should mark the specified player as gameOver, game activity and winner state unchanged by this action', () => {
+        const p1 = { id: 'p1', username: 'Player1', isWinner: false, gameOver: false };
+        const p2 = { id: 'p2', username: 'Player2', isWinner: false, gameOver: false }; // This player is still active
+
         const previousState = {
           ...baseInitialState,
+          players: [p1, p2],
           gameState: {
             isActive: true,
+            startedAt: Date.now(),
             playerStates: {
-              [p1.id]: { ...p1, score: 100, gameOver: true, isWinner: false }, // p1 already out
-              [p2.id]: { ...p2, score: 200, gameOver: false, isWinner: false }, // p2 active
-              [p3.id]: { ...p3, score: 150, gameOver: false, isWinner: false }, // p3 active
+              [p1.id]: { ...p1 },
+              [p2.id]: { ...p2 },
             },
             winner: null,
           },
         };
-        // p2 now goes game over, p3 should be winner
-        const payload = { player: { id: p2.id, score: 200 } };
-        const result = gameReducer(previousState, playerGameOver(payload));
+
+        // p1 is the player who got game over
+        const action = playerGameOver({ player: { ...p1, score: 500, gameOver: true, isWinner: false } });
+        const result = gameReducer(previousState, action);
 
         expect(result.gameState.playerStates[p1.id].gameOver).toBe(true);
-        expect(result.gameState.playerStates[p2.id].gameOver).toBe(true);
+        expect(result.gameState.playerStates[p1.id].isWinner).toBe(false);
+        expect(result.gameState.playerStates[p1.id].score).toBe(500);
+
+        // Check that player p2's state is untouched and they are not declared winner by this action
+        expect(result.gameState.playerStates[p2.id].gameOver).toBe(false);
         expect(result.gameState.playerStates[p2.id].isWinner).toBe(false);
 
-        expect(result.gameState.playerStates[p3.id].gameOver).toBe(false);
-        expect(result.gameState.playerStates[p3.id].isWinner).toBe(true); // p3 is the winner
-        expect(result.gameState.winner).toBe(p3.id);
-        expect(result.gameState.isActive).toBe(true); // Game remains active until winner is declared by server or another event
+        // Global game state should remain active, awaiting server confirmation for game end/winner
+        expect(result.gameState.isActive).toBe(true);
+        expect(result.gameState.winner).toBeNull();
       });
 
-      it('should mark game inactive if all players are game over', () => {
-        const mockDate = new Date(2023, 10, 10, 13, 0, 0);
+      // THIS TEST IS REVISED: playerGameOver no longer marks game inactive directly.
+      it('should mark players as gameOver, game activity unchanged by this action alone', () => {
+        const p1 = { id: 'p1', username: 'Player1', isWinner: false, gameOver: false };
+        const p2 = { id: 'p2', username: 'Player2', isWinner: false, gameOver: false };
+        const mockDate = new Date();
         vi.setSystemTime(mockDate);
-        const previousState = {
+
+        let state = {
           ...baseInitialState,
+          players: [p1, p2],
           gameState: {
             isActive: true,
+            startedAt: mockDate.getTime(),
             playerStates: {
-              [p1.id]: { ...p1, score: 100, gameOver: true, isWinner: false },  // p1 already out
-              [p2.id]: { ...p2, score: 200, gameOver: false, isWinner: false }, // p2 active, about to be out
+              [p1.id]: { ...p1 },
+              [p2.id]: { ...p2 },
             },
             winner: null,
           },
         };
-        const payload = { player: { id: p2.id, score: 200 } }; // p2 is now out
-        const result = gameReducer(previousState, playerGameOver(payload));
 
-        expect(result.gameState.playerStates[p1.id].gameOver).toBe(true);
-        expect(result.gameState.playerStates[p2.id].gameOver).toBe(true);
-        expect(result.gameState.playerStates[p2.id].isWinner).toBe(false);
-        expect(result.gameState.isActive).toBe(false); // All players out, game inactive
-        expect(result.gameState.endedAt).toBe(mockDate.getTime());
-        expect(result.gameState.winner).toBeNull(); // No specific winner if all lose this way
+        // Player 1 gets game over
+        state = gameReducer(state, playerGameOver({ player: { ...p1, score: 100, gameOver: true, isWinner: false } }));
+        // Player 2 gets game over
+        state = gameReducer(state, playerGameOver({ player: { ...p2, score: 200, gameOver: true, isWinner: false } }));
+
+        expect(state.gameState.playerStates[p1.id].gameOver).toBe(true);
+        expect(state.gameState.playerStates[p1.id].isWinner).toBe(false);
+        expect(state.gameState.playerStates[p2.id].gameOver).toBe(true);
+        expect(state.gameState.playerStates[p2.id].isWinner).toBe(false);
+
+        // Game remains active from the client's perspective based on these actions alone.
+        // Server will send game:over to make it inactive.
+        expect(state.gameState.isActive).toBe(true);
+        expect(state.gameState.winner).toBeNull();
       });
 
       it('should do nothing if gameState, playerStates, or payload.player is missing', () => {
@@ -841,72 +868,106 @@ describe('gameSlice', () => {
 
     // gameStarted
     describe('gameStarted', () => {
+      const p1 = { id: 'p1', username: 'SoloPlayer' };
+      const p2 = { id: 'p2', username: 'Player2' };
+      const initialGamePayloadState = { // This is a typical gameState payload part
+        grid: [['S']],
+        score: 0,
+        level: 1,
+        lines: 0,
+        isActive: true, // It will be set to true by the reducer
+        playerStates: { [p1.id]: { id: p1.id, username: p1.username, gameOver: false, isWinner: false } },
+        players: [p1], // For solo game scenario
+        isWinner: false,
+        winner: null,
+      };
+
       it('should set game active and use initialState if provided (solo)', () => {
-        const p1 = { id: 'p1', username: 'SoloPlayer' };
-        const initialGamePayloadState = {
-          grid: [['S']], score: 0, level: 1, lines: 0,
-          playerStates: { [p1.id]: { ...p1, isWinner: false } },
-          players: [p1], // Important for isSoloGame logic
-          isActive: true, isWinner: false, winner: null,
-        };
         const startedAtTime = Date.now();
-        const previousState = {
-          ...baseInitialState,
-          currentGame: { id: 'g1', name: 'Test Game', isActive: false, startedAt: null },
+        const payload = {
+          startedAt: startedAtTime,
+          initialState: { ...initialGamePayloadState, players: [p1] } // Explicitly pass players for solo
         };
-        const payload = { startedAt: startedAtTime, initialState: initialGamePayloadState };
-        const result = gameReducer(previousState, gameStarted(payload));
+        const result = gameReducer(baseInitialState, gameStarted(payload));
 
         expect(result.currentGame.isActive).toBe(true);
         expect(result.currentGame.startedAt).toBe(startedAtTime);
         expect(result.gameState).toEqual({
-          ...initialGamePayloadState,
+          ...initialGamePayloadState, // initialGamePayloadState already has playerStates for p1
           isSoloGame: true, // because players.length === 1
-          isWinner: false, // ensure these are reset
-          winner: null,
+          startedAt: startedAtTime, // Ensure startedAt is in the expectation
+          // playerStates should be as defined in initialGamePayloadState
         });
-        expect(result.gameState.playerStates[p1.id].isWinner).toBe(false);
       });
 
       it('should set isSoloGame to false if multiple players in initialState', () => {
-        const p1 = { id: 'p1' };
-        const p2 = { id: 'p2' };
-        const initialGamePayloadState = {
-          playerStates: { [p1.id]: { ...p1, isWinner: false }, [p2.id]: { ...p2, isWinner: false } },
-          players: [p1, p2], // Multiple players
-          isActive: true, isWinner: false, winner: null,
-        };
         const startedAtTime = Date.now();
-        const previousState = { ...baseInitialState, currentGame: { id: 'g1' } };
-        const payload = { startedAt: startedAtTime, initialState: initialGamePayloadState };
-        const result = gameReducer(previousState, gameStarted(payload));
-
-        expect(result.gameState.isSoloGame).toBe(false);
-        expect(result.gameState.playerStates[p1.id].isWinner).toBe(false);
-        expect(result.gameState.playerStates[p2.id].isWinner).toBe(false);
-      });
-
-      it('should initialize playerStates if missing in provided initialState', () => {
-        const initialGamePayloadState = { players: [{id: 'p1'}], isActive: true }; // No playerStates
-        const payload = { startedAt: Date.now(), initialState: initialGamePayloadState };
+        const multiPlayerInitialState = {
+          ...initialGamePayloadState,
+          players: [p1, p2],
+          playerStates: {
+            [p1.id]: { id: p1.id, username: p1.username, gameOver: false, isWinner: false },
+            [p2.id]: { id: p2.id, username: p2.username, gameOver: false, isWinner: false },
+          }
+        };
+        const payload = { startedAt: startedAtTime, initialState: multiPlayerInitialState };
         const result = gameReducer(baseInitialState, gameStarted(payload));
-        expect(result.gameState.playerStates).toEqual({});
+        expect(result.gameState.isSoloGame).toBe(false);
+        expect(result.gameState.startedAt).toBe(startedAtTime);
+        expect(result.gameState.playerStates[p1.id]).toBeDefined();
+        expect(result.gameState.playerStates[p2.id]).toBeDefined();
       });
+
+      it('should initialize playerStates from initialState.players if gameState.playerStates is missing in provided initialState', () => {
+        // Test case where initialState.gameState might not have playerStates, but initialState.players exists
+        const startedAtTime = Date.now();
+        const initialStateWithoutPlayerStatesInGameState = {
+          grid: [['S']],
+          score: 0,
+          level: 1,
+          lines: 0,
+          isActive: true,
+          players: [{ id: 'p1', username: 'Player1' }], // Players array is present
+          // gameState.playerStates is deliberately missing here in the input
+        };
+        const payload = { startedAt: startedAtTime, initialState: initialStateWithoutPlayerStatesInGameState };
+        const result = gameReducer(baseInitialState, gameStarted(payload));
+
+        // Expect playerStates to be created from initialState.players
+        expect(result.gameState.playerStates).toEqual({
+          'p1': { id: 'p1', username: 'Player1', gameOver: false, isWinner: false }
+        });
+        expect(result.gameState.startedAt).toBe(startedAtTime);
+        expect(result.gameState.isSoloGame).toBe(true);
+      });
+
 
       it('should initialize a default gameState if no initialState is provided in payload', () => {
-        const previousState = { ...baseInitialState, currentGame: { id: 'g1' } };
-        const payload = { startedAt: Date.now() }; // No initialState in payload
-        const result = gameReducer(previousState, gameStarted(payload));
+        const startedAtTime = Date.now();
+        const payload = { startedAt: startedAtTime }; // No initialState
+        const result = gameReducer(baseInitialState, gameStarted(payload));
 
         expect(result.currentGame.isActive).toBe(true);
+        expect(result.currentGame.startedAt).toBe(startedAtTime);
+
+        const expectedDefaultGrid = Array(20).fill(null).map(() => Array(10).fill("0"));
+
+        // Ensuring all 14 properties as per the reducer's default gameState definition are here:
         expect(result.gameState).toEqual({
           isActive: true,
-          grid: Array(20).fill(null).map(() => Array(10).fill("0")),
+          grid: expectedDefaultGrid,
+          currentPiece: null,
+          nextPiece: null,
           score: 0,
           level: 0,
           lines: 0,
           playerStates: {},
           isSoloGame: true,
+          startedAt: startedAtTime,
+          endedAt: null,
+          isWinner: false,
+          winner: null,
+          lastPenalty: null,
         });
       });
     });

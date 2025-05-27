@@ -26,7 +26,9 @@ const GamePage = () => {
     moveRight,
     moveDown,
     rotate,
-    drop
+    drop,
+    restartGame,
+    canRestartGame
   } = useGame();
 
   const [keyEnabled, setKeyEnabled] = useState(true);
@@ -36,6 +38,8 @@ const GamePage = () => {
   const [startGameError, setStartGameError] = useState(null);
   const [showGameOverModal, setShowGameOverModal] = useState(false);
   const [showVictoryModal, setShowVictoryModal] = useState(false);
+  const [isRestartingGame, setIsRestartingGame] = useState(false);
+  const [restartGameError, setRestartGameError] = useState(null);
 
   // Gestionnaire d'événements clavier
   const handleKeyDown = useCallback((e) => {
@@ -191,6 +195,35 @@ const GamePage = () => {
     }
   };
 
+  const handleRestart = async () => {
+    // Éviter les clics multiples
+    if (isRestartingGame) return;
+
+    setIsRestartingGame(true);
+    setRestartGameError(null);
+
+    try {
+      const result = await restartGame();
+
+      if (!result.success) {
+        setRestartGameError(result.error || "Erreur lors du redémarrage du jeu");
+        console.error('Erreur lors du redémarrage du jeu:', result.error);
+      } else {
+        // Fermer les modales si le restart réussit
+        setShowVictoryModal(false);
+        setShowGameOverModal(false);
+      }
+    } catch (error) {
+      console.error('Exception lors du redémarrage du jeu:', error);
+      setRestartGameError(error.message || "Une erreur inattendue s'est produite");
+    } finally {
+      // Réactiver le bouton après 1.5 secondes pour éviter les clics répétés
+      setTimeout(() => {
+        setIsRestartingGame(false);
+      }, 1500);
+    }
+  };
+
   useEffect(() => {
   }, [gameState]);
 
@@ -289,13 +322,27 @@ const GamePage = () => {
 
           <div className="game-controls">
             {currentGame && currentGame.host === user?.id && !gameState?.isActive && (
-              <button
-                onClick={handleStart}
-                className={`start-button ${isStartingGame ? 'loading' : ''}`}
-                disabled={isStartingGame}
-              >
-                {isStartingGame ? 'Démarrage...' : 'Démarrer la partie'}
-              </button>
+              <>
+                {!gameState?.startedAt ? (
+                  // Bouton de démarrage initial
+                  <button
+                    onClick={handleStart}
+                    className={`start-button ${isStartingGame ? 'loading' : ''}`}
+                    disabled={isStartingGame}
+                  >
+                    {isStartingGame ? 'Démarrage...' : 'Démarrer la partie'}
+                  </button>
+                ) : canRestartGame() ? (
+                  // Bouton de redémarrage
+                  <button
+                    onClick={handleRestart}
+                    className={`restart-button ${isRestartingGame ? 'loading' : ''}`}
+                    disabled={isRestartingGame}
+                  >
+                    {isRestartingGame ? 'Redémarrage...' : 'Redémarrer la partie'}
+                  </button>
+                ) : null}
+              </>
             )}
             <button onClick={handleLeave} className="leave-button">
               Quitter la partie
@@ -304,6 +351,13 @@ const GamePage = () => {
               Déconnexion
             </button>
           </div>
+
+          {restartGameError && (
+            <div className="restart-game-error">
+              <span>{restartGameError}</span>
+              <button onClick={() => setRestartGameError(null)}>×</button>
+            </div>
+          )}
 
           {/* Afficher les erreurs de démarrage de jeu */}
           {startGameError && (
@@ -490,21 +544,11 @@ const GamePage = () => {
                 <p className="game-over-message-wait">
                   {isSoloGame
                     ? `La partie solo est terminée !`
-                    : (gameState && gameState.isActive && activePlayers > 0)
-                      ? "Vous pouvez observer la partie en cours ou quitter maintenant."
-                      : "La partie est maintenant terminée pour tous les joueurs."
+                    : "Vous avez perdu cette partie !"
                   }
                 </p>
               </div>
               <div className="game-over-modal-footer">
-                {!isSoloGame && gameState && gameState.isActive && activePlayers > 0 && (
-                  <button
-                    className="game-over-close-btn"
-                    onClick={() => setShowGameOverModal(false)}
-                  >
-                    Observer la partie
-                  </button>
-                )}
                 <button
                   className="game-over-exit-btn"
                   onClick={handleLeave}
@@ -542,8 +586,22 @@ const GamePage = () => {
                 <p className="victory-message">
                   Vous avez battu tous vos adversaires!
                 </p>
+                {canRestartGame() && (
+                  <p className="restart-hint">
+                    En tant que gagnant, vous pouvez redémarrer une nouvelle partie!
+                  </p>
+                )}
               </div>
               <div className="victory-modal-footer">
+                {canRestartGame() && (
+                  <button
+                    className={`victory-restart-btn ${isRestartingGame ? 'loading' : ''}`}
+                    onClick={handleRestart}
+                    disabled={isRestartingGame}
+                  >
+                    {isRestartingGame ? 'Redémarrage...' : 'Nouvelle partie'}
+                  </button>
+                )}
                 <button
                   className="victory-exit-btn"
                   onClick={handleLeave}

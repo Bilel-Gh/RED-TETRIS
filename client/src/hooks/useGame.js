@@ -15,7 +15,10 @@ import {
   rotatePiece,
   dropPiece,
   autoDropPiece,
-  resetGame
+  resetGame,
+  restartGameStart,
+  restartGameSuccess,
+  restartGameFailure,
 } from '../features/gameSlice';
 
 export function useGame() {
@@ -172,6 +175,103 @@ export function useGame() {
     }
   };
 
+  const restartGame = async () => {
+    dispatch(restartGameStart());
+
+    try {
+      // Vérifier si le service socket est connecté
+      if (!socketService.isConnected) {
+        console.error("Impossible de redémarrer la partie: socket non connecté");
+        dispatch(restartGameFailure("Connexion au serveur perdue. Veuillez rafraîchir la page."));
+        return {
+          success: false,
+          error: "Connexion au serveur perdue. Veuillez rafraîchir la page."
+        };
+      }
+
+      // Vérifier si l'utilisateur est authentifié
+      if (!socketService.isAuth) {
+        console.error("Impossible de redémarrer la partie: utilisateur non authentifié");
+        dispatch(restartGameFailure("Vous n'êtes pas authentifié. Veuillez vous reconnecter."));
+        return {
+          success: false,
+          error: "Vous n'êtes pas authentifié. Veuillez vous reconnecter."
+        };
+      }
+
+      // Vérifier si la partie peut être redémarrée
+      if (gameState?.isActive) {
+        console.error("Impossible de redémarrer la partie: une partie est déjà en cours");
+        dispatch(restartGameFailure("Une partie est déjà en cours."));
+        return {
+          success: false,
+          error: "Une partie est déjà en cours."
+        };
+      }
+
+      // Vérifier si l'utilisateur est l'hôte
+      if (currentGame?.host !== user?.id) {
+        console.error("Impossible de redémarrer la partie: utilisateur n'est pas l'hôte");
+        dispatch(restartGameFailure("Seul l'hôte peut redémarrer la partie."));
+        return {
+          success: false,
+          error: "Seul l'hôte peut redémarrer la partie."
+        };
+      }
+
+      const response = await socketService.restartGame();
+
+      if (response && response.success) {
+        dispatch(restartGameSuccess());
+        return { success: true };
+      } else {
+        dispatch(restartGameFailure(response?.error || "Échec du redémarrage de la partie"));
+        return {
+          success: false,
+          error: response?.error || "Échec du redémarrage de la partie"
+        };
+      }
+
+    } catch (error) {
+      console.error("Hook useGame: erreur lors du redémarrage de la partie:", error);
+
+      let errorMessage = "Erreur inconnue lors du redémarrage du jeu";
+
+      if (error.message && error.message.includes("timeout")) {
+        errorMessage = "Le serveur ne répond pas. Veuillez réessayer plus tard.";
+      } else if (error.message && error.message.includes("connexion")) {
+        errorMessage = "Problème de connexion au serveur. Vérifiez votre connexion internet.";
+      } else if (error.error) {
+        errorMessage = error.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      dispatch(restartGameFailure(errorMessage));
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  };
+
+  const canRestartGame = useCallback(() => {
+    console.log('currentGame', currentGame);
+    console.log('gameState', gameState);
+    console.log('user', user);
+    console.log('players', players);
+    console.log('currentGame?.host === user?.id', currentGame?.host === user?.id);
+    console.log('!gameState?.isActive', !gameState?.isActive); // TOUJOURS FALSE ET C'EST PAS NORMALE !
+    console.log('gameState?.startedAt', gameState?.startedAt);
+    console.log('players && players.length > 0', players && players.length > 0);
+    return (
+      currentGame?.host === user?.id && // L'utilisateur est l'hôte
+      !gameState?.isActive && // La partie n'est pas active
+      gameState?.startedAt && // La partie a été démarrée au moins une fois
+      players && players.length > 0 // Il y a des joueurs dans la partie
+    );
+  }, [currentGame, gameState, user, players]);
+
   const moveLeft = useCallback(async () => {
     dispatch(movePieceLeft());
     return socketService.movePiece('left');
@@ -244,6 +344,8 @@ export function useGame() {
     joinGame,
     handleLeaveGame,
     startGame,
+    restartGame,
+    canRestartGame,
     moveLeft,
     moveRight,
     moveDown,

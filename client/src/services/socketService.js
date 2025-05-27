@@ -17,7 +17,8 @@ import {
   gameOver,
   playerGameOver,
   penaltyApplied,
-  gameWinner
+  gameWinner,
+  gameRestarted
 } from '../features/gameSlice';
 
 // Socket instance
@@ -36,7 +37,7 @@ const gameAndUserEventNames = [
   'game:list_updated', 'game:player_joined', 'game:player_left',
   'game:state_updated', 'game:player_updated', 'game:penalty_applied',
   'game:started', 'game:over', 'game:winner', 'game:player_gameover',
-  'user:joined', 'user:left'
+  'user:joined', 'user:left', 'game:restarted'
 ];
 
 // Exported for testing purposes to reset internal state
@@ -192,6 +193,7 @@ const setupGameEvents = () => {
 
   // La partie est terminée (défaite)
   socket.on('game:over', (data) => {
+    console.log('****************** Received game:over event:', data);
     store.dispatch(gameOver({
       ...data,
       isWinner: false
@@ -200,6 +202,7 @@ const setupGameEvents = () => {
 
   // La partie est gagnée
   socket.on('game:winner', (data) => {
+    console.log('****************** Received game:winner event:', data);
     store.dispatch(gameWinner({
       ...data,
       isWinner: true
@@ -208,6 +211,7 @@ const setupGameEvents = () => {
 
   // Un joueur spécifique a perdu (game over individuel)
   socket.on('game:player_gameover', (data) => {
+    console.log('****************** Received game:player_gameover event:', data);
     store.dispatch(playerGameOver(data));
   });
 
@@ -217,6 +221,17 @@ const setupGameEvents = () => {
 
   // Un utilisateur s'est déconnecté
   socket.on('user:left', () => {
+  });
+
+  socket.on('game:restarted', (data) => {
+    console.log('Partie redémarrée:', data);
+    store.dispatch(gameRestarted({
+      gameId: data.gameId,
+      roomName: data.roomName,
+      host: data.host,
+      restartedAt: data.restartedAt,
+      gameState: data.gameState
+    }));
   });
 };
 
@@ -607,6 +622,55 @@ const scheduleReconnection = (delay = 2000) => {
   }, delay);
 };
 
+export const restartGame = async () => {
+  try {
+    await ensureConnection();
+
+    // Vérifier que le socket est bien connecté
+    if (!socket || !socket.connected) {
+      console.error("Impossible de redémarrer la partie: socket non connecté");
+      return Promise.reject({
+        success: false,
+        error: "Connexion au serveur perdue. Veuillez rafraîchir la page."
+      });
+    }
+
+    // Vérifier que l'utilisateur est bien authentifié
+    if (!socket.auth) {
+      console.error("Impossible de redémarrer la partie: utilisateur non authentifié");
+      return Promise.reject({
+        success: false,
+        error: "Vous n'êtes pas authentifié. Veuillez vous reconnecter."
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Le serveur ne répond pas à la demande de redémarrage'));
+      }, 5000);
+
+      socket.emit('game:restart', (response) => {
+        clearTimeout(timeout);
+
+        if (response && response.success) {
+          resolve({ success: true });
+        } else {
+          reject({
+            success: false,
+            error: response?.error || "Erreur inconnue lors du redémarrage"
+          });
+        }
+      });
+    });
+  } catch (error) {
+    console.error("Erreur critique lors du redémarrage du jeu:", error);
+    return Promise.reject({
+      success: false,
+      error: error.message || 'Problème de connexion au serveur'
+    });
+  }
+};
+
 // Getters pour l'état de l'authentification et de la connexion
 export const socketService = {
   connect,
@@ -617,6 +681,7 @@ export const socketService = {
   leaveGame,
   startGame,
   movePiece,
+  restartGame,
   disconnect,
   testConnection,
   scheduleReconnection,

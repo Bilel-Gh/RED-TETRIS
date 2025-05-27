@@ -1,111 +1,128 @@
-# RED-TETRIS
+# 🎮 RED TETRIS - Tetris Multijoueur en Temps Réel
 
-RED-TETRIS est un jeu Tetris multijoueur en réseau, développé avec une stack JavaScript full-stack.
+<div align="center">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js"/>
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React"/>
+  <img src="https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white" alt="Socket.io"/>
+  <img src="https://img.shields.io/badge/Fastify-000000?style=for-the-badge&logo=fastify&logoColor=white" alt="Fastify"/>
+</div>
 
-## Technologies utilisées
+## 🚀 Aperçu du Projet
 
-### Côté serveur
-- Node.js
-- Fastify
-- Socket.io
+RED TETRIS est une implémentation moderne et multijoueur du célèbre jeu Tetris, développée avec une stack JavaScript full-stack. Ce projet démontre l'utilisation avancée des WebSockets pour créer une expérience de jeu en temps réel fluide et compétitive.
 
-### Côté client
-- React
-- Redux
-- TailwindCSS
-- Socket.io-client
+### 🌟 Points Forts
 
-## Installation
+- **Architecture Full-Stack** : Développement complet avec Node.js et React
+- **Communication Temps Réel** : Implémentation robuste des WebSockets avec Socket.io
+- **Performance** : Utilisation de Fastify pour des performances optimales
+- **Scalabilité** : Architecture conçue pour gérer plusieurs parties simultanées
+- **Tests Automatisés** : Couverture de tests avec Vitest
 
-1. Clonez ce dépôt :
+## 🛠️ Stack Technique
+
+### Frontend
+- **Framework** : React avec Vite
+- **State Management** : Redux pour la gestion d'état globale
+- **Styling** : CSS Modules avec animations fluides
+- **WebSockets** : Socket.io-client pour la communication temps réel
+
+### Backend
+- **Runtime** : Node.js
+- **Framework** : Fastify pour des performances optimales
+- **WebSockets** : Socket.io pour la gestion des connexions temps réel
+- **Tests** : Vitest pour les tests unitaires et d'intégration
+
+## 🎯 Fonctionnalités Principales
+
+### Mode Multijoueur
+- Parties en temps réel avec plusieurs joueurs
+- Synchronisation instantanée des grilles
+- Système de matchmaking via URL
+- Chat en temps réel entre joueurs
+
+### Mécaniques de Jeu
+- Système de score avancé
+- Gestion des malus entre joueurs
+- Prévisualisation des pièces
+- Système de niveaux dynamique
+
+### Interface Utilisateur
+- Design responsive et moderne
+- Animations fluides
+- Interface intuitive et accessible
+- Support multi-plateformes
+
+## 📦 Installation
+
 ```bash
-git clone <url-du-repo>
+# Cloner le repository
+git clone https://github.com/votre-username/RED-TETRIS.git
 cd RED-TETRIS
-```
 
-2. Installez les dépendances côté serveur :
-```bash
-cd server
+# Installer les dépendances
 npm install
-```
 
-3. Installez les dépendances côté client :
-```bash
-cd ../client
-npm install
-```
-
-## Exécution
-
-### Méthode simple (script automatique)
-
-Utilisez le script pour démarrer à la fois le client et le serveur :
-```bash
+# Lancer le projet (client + serveur)
 ./start.sh
 ```
 
-### Méthode manuelle
+## 🎮 Comment Jouer
 
-1. Démarrez le serveur :
-```bash
-cd server
-npm run dev
-```
+1. Lancez le jeu via `./start.sh`
+2. Accédez à `http://localhost:5173`
+3. Créez une partie ou rejoignez une partie existante
+4. Utilisez les contrôles classiques de Tetris :
+   - ⬅️ ➡️ : Déplacement horizontal
+   - ⬆️ : Rotation
+   - ⬇️ : Descente rapide
+   - Espace : Chute instantanée
 
-2. Dans un autre terminal, démarrez le client :
-```bash
-cd client
-npm run dev
-```
-
-## Utilisation
-
-1. Ouvrez votre navigateur à l'adresse http://localhost:5173
-2. Entrez un nom d'utilisateur pour vous connecter
-3. Créez une nouvelle partie ou rejoignez une partie existante
-4. Partagez l'URL avec des amis pour qu'ils puissent rejoindre votre partie
-5. Jouez à Tetris !
-
-## Commandes de jeu
-
-- Flèches gauche/droite : Déplacer la pièce horizontalement
-- Flèche bas : Accélérer la descente
-- Flèche haut : Faire pivoter la pièce
-- Espace : Faire chuter la pièce instantanément
-
-## Navigation par URL
-
-Vous pouvez accéder directement à une partie en utilisant le format d'URL suivant :
-```
-http://localhost:5173/partieName/pseudo
-```
-
-## Fonctionnalités
-
-- Création et gestion de parties multijoueurs
-- Visualisation des grilles des adversaires
-- Système de score et de niveaux
-- Interface utilisateur moderne et responsive
-- Partage facile des parties via URL
-
-## Structure du projet
+## 🏗️ Architecture du Projet
 
 ```
 RED-TETRIS/
-├── client/             # Application frontend React
+├── client/                 # Application React
 │   ├── src/
-│   │   ├── components/ # Composants UI
-│   │   ├── features/   # Slices Redux
-│   │   ├── hooks/      # Hooks personnalisés
-│   │   ├── pages/      # Pages de l'application
-│   │   ├── services/   # Services (Socket.io)
-│   │   └── store/      # Configuration Redux
-│   └── ...
-├── server/             # Serveur backend Node.js
+│   │   ├── components/    # Composants UI
+│   │   ├── features/      # Logique métier
+│   │   ├── hooks/         # Hooks personnalisés
+│   │   ├── pages/         # Pages de l'application
+│   │   ├── services/      # Services (Socket.io)
+│   │   └── store/         # Configuration Redux
+│   └── tests/             # Tests frontend
+├── server/                # Serveur Node.js
 │   ├── src/
-│   │   ├── models/     # Modèles (Game, Piece, Player)
-│   │   ├── services/   # Services (SocketService, GameManager)
-│   │   └── utils/      # Utilitaires
-│   └── ...
-└── start.sh           # Script de démarrage
+│   │   ├── models/       # Modèles de données
+│   │   ├── services/     # Services métier
+│   │   └── config/       # Configuration
+│   └── tests/            # Tests backend
+└── start.sh              # Script de démarrage
 ```
+
+## 🧪 Tests
+
+Le projet inclut une suite de tests complète :
+- Tests unitaires avec Vitest
+- Tests d'intégration
+- Couverture de code
+
+## 📚 Documentation
+
+Pour plus de détails sur chaque partie du projet :
+- [Documentation Client](client/README.md)
+- [Documentation Serveur](server/README.md)
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues ! Consultez nos guides détaillés dans les README spécifiques du client et du serveur.
+
+## 📄 Licence
+
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ by [Votre Nom]</sub>
+</div>

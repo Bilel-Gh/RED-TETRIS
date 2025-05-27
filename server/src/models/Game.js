@@ -21,6 +21,7 @@ export class Game {
     this.maxPlayers = 4; // Limite à 4 joueurs
     this.host = null; // Premier joueur à rejoindre
     this.initialFallSpeedSetting = initialFallSpeedSetting; // Stocker le réglage pour la partie
+    this.hasJustEnded = false;
 
     // Pour la séquence de pièces partagée
     this.pieceSequence = [];
@@ -377,10 +378,14 @@ export class Game {
     // Si la pièce ne peut pas descendre, la verrouiller en place
     if (dy > 0) {
       const lockResult = this.lockPiece(player);
+      console.log(`[Game ${this.id}] lockPiece result for ${player.username}:`, lockResult);
       return {
         moved: false,
         gameOver: lockResult.isGameOver,
-        player: lockResult.player
+        player: lockResult.player,
+        linesCleared: lockResult.linesCleared,
+        penaltyApplied: lockResult.penaltyApplied,
+        penaltyLines: lockResult.penaltyLines
       };
     }
 
@@ -433,10 +438,15 @@ export class Game {
     if (dropDistance > 0) {
       player.currentPiece.y += dropDistance;
       const lockResult = this.lockPiece(player);
+      console.log(`[Game ${this.id}] dropPiece lockResult for ${player.username}:`, lockResult);
+
       return {
         dropped: dropDistance,
         gameOver: lockResult.isGameOver,
-        player: lockResult.player
+        player: lockResult.player,
+        linesCleared: lockResult.linesCleared,
+        penaltyApplied: lockResult.penaltyApplied,
+        penaltyLines: lockResult.penaltyLines
       };
     }
 
@@ -451,11 +461,15 @@ export class Game {
    * @returns {Object|null} L'état du jeu si quelque chose a changé, sinon null
    */
   update() {
+    console.log(`[Game ${this.id}] update() called, isActive: ${this.isActive}`);
+
     if (!this.isActive) {
+      console.log(`[Game ${this.id}] Game not active, returning null`);
       return null;
     }
 
     const updatedPlayers = [];
+    let gameHasEnded = false;
 
     // Mettre à jour chaque joueur actif
     for (const player of this.players.values()) {
@@ -466,59 +480,168 @@ export class Game {
       if (currentTime - player.lastFallTime >= player.fallSpeed) {
         const moveResult = this.movePiece(player, 0, 1);
         player.lastFallTime = currentTime;
-        if (moveResult.player) { // Si movePiece a retourné un état joueur (la pièce a bougé ou a été lockée)
+
+        console.log(`[Game ${this.id}] Auto-move result for ${player.username}:`, {
+          moved: moveResult.moved,
+          gameOver: moveResult.gameOver,
+          'player.gameOver after auto-move': player.gameOver,
+          'player.isPlaying after auto-move': player.isPlaying
+        });
+
+        if (moveResult.player) {
           updatedPlayers.push(moveResult.player);
+        }
+
+        // 🎯 Vérifier si ce mouvement a causé la fin du jeu
+        if (moveResult.gameOver) {
+          console.log(`[Game ${this.id}] Player ${player.username} game over in auto-move, checking game end...`);
+          const gameEnded = this.checkGameEnd();
+          if (gameEnded) {
+            gameHasEnded = true;
+            console.log(`[Game ${this.id}] ✅ Game ended due to auto-move!`);
+            break; // Sortir de la boucle car le jeu est terminé
+          }
         }
       }
     }
 
-    // Vérifier si la partie est terminée
-    const gameHasEnded = this.checkGameEnd();
+    // 🎯 Alternative : utiliser le flag hasJustEnded
+    if (this.hasJustEnded) {
+      gameHasEnded = true;
+      this.hasJustEnded = false; // Reset le flag
+      console.log(`[Game ${this.id}] ✅ Game ended (detected via hasJustEnded flag)!`);
+    }
 
-    // Retourner les joueurs mis à jour et l'état de fin de partie
+    console.log(`[Game ${this.id}] update() returning:`, {
+      updatedPlayers: updatedPlayers.length,
+      gameHasEnded: gameHasEnded,
+      isActive: this.isActive
+    });
+
     return { updatedPlayers, gameHasEnded };
   }
-
   /**
    * Vérifie si la partie est terminée (tous les joueurs en game over)
    * @returns {boolean} true si la partie est terminée
    */
-  checkGameEnd() {
-    if (!this.isActive) {
-      return false; // Le jeu est déjà terminé, ne pas vérifier à nouveau
-    }
 
-    // Vérifier si tous les joueurs sont en game over
-    const allPlayersGameOver = [...this.players.values()].every(player =>
-      player.gameOver || !player.isPlaying
-    );
+/**
+ * Vérifie si la partie est terminée
+ * @returns {boolean} true si la partie est terminée
+ */
+checkGameEnd() {
+  console.log(`[Game ${this.id}] ========= DEBUGGING checkGameEnd =========`);
+  console.log(`[Game ${this.id}] isActive: ${this.isActive}`);
+  console.log(`[Game ${this.id}] Total players in game: ${this.players.size}`);
 
-    // Mode solo : si le joueur unique est en game over, terminer la partie
-    const isSoloGame = this.players.size === 1;
-    const soloPlayerGameOver = isSoloGame && [...this.players.values()][0]?.gameOver === true;
-
-    // Identifier le gagnant (dernier joueur non éliminé) s'il y a plus d'un joueur
-    if (!isSoloGame && this.isActive) {
-      const activePlayers = [...this.players.values()].filter(player => !player.gameOver && player.isPlaying);
-
-      // S'il ne reste qu'un seul joueur actif, c'est le gagnant
-      if (activePlayers.length === 1) {
-        const winner = activePlayers[0];
-        console.log(`Joueur ${winner.username} (${winner.id}) est le dernier survivant et gagne la partie!`);
-        this.winner = winner.id;
-        winner.isWinner = true;
-      }
-    }
-
-    if ((allPlayersGameOver || soloPlayerGameOver) && this.isActive) {
-      console.log('GAME OVER - Tous les joueurs sont éliminés ou mode solo terminé');
-      this.stop();
-      return true;
-    }
-
+  if (!this.isActive) {
+    console.log(`[Game ${this.id}] Game already inactive, returning false`);
     return false;
   }
 
+  // Debug chaque joueur individuellement
+  console.log(`[Game ${this.id}] === ANALYZING EACH PLAYER ===`);
+  for (const [playerId, player] of this.players.entries()) {
+    console.log(`[Game ${this.id}] Player ${player.username} (${playerId}):`);
+    console.log(`  - gameOver: ${player.gameOver}`);
+    console.log(`  - isPlaying: ${player.isPlaying}`);
+    console.log(`  - isWinner: ${player.isWinner}`);
+    console.log(`  - Should be considered ACTIVE: ${!player.gameOver && player.isPlaying}`);
+  }
+
+  // Compter les joueurs encore en vie (non game over)
+  const activePlayers = [...this.players.values()].filter(player => {
+    const isActive = !player.gameOver && player.isPlaying;
+    console.log(`[Game ${this.id}] Player ${player.username} isActive: ${isActive} (gameOver: ${player.gameOver}, isPlaying: ${player.isPlaying})`);
+    return isActive;
+  });
+
+  console.log(`[Game ${this.id}] === RESULT ===`);
+  console.log(`[Game ${this.id}] Active players count: ${activePlayers.length}`);
+  console.log(`[Game ${this.id}] Active players list:`);
+  activePlayers.forEach(p => console.log(`  - ${p.username} (${p.id})`));
+
+  const isSoloGame = this.players.size === 1;
+  console.log(`[Game ${this.id}] Is solo game: ${isSoloGame}`);
+
+  // 🎯 LOGIQUE PRINCIPALE : Différencier solo et multijoueur
+  let shouldEndGame = false;
+
+  if (isSoloGame) {
+    // 🎮 MODE SOLO : La partie se termine seulement quand le joueur unique perd
+    shouldEndGame = activePlayers.length === 0;
+    console.log(`[Game ${this.id}] Solo mode - Should end game (player lost): ${shouldEndGame}`);
+
+    if (shouldEndGame) {
+      console.log(`[Game ${this.id}] SOLO GAME OVER - Player has lost`);
+
+      // En mode solo, pas de "gagnant", juste game over
+      this.winner = null;
+
+      // Marquer le joueur comme perdant (il est déjà gameOver = true)
+      for (const player of this.players.values()) {
+        player.isWinner = false;
+        player.gameOver = true;
+        console.log(`[Game ${this.id}] Solo player ${player.username} final state: game over`);
+      }
+    }
+
+  } else {
+    // 🎮 MODE MULTIJOUEUR : La partie se termine quand il reste ≤ 1 joueur actif
+    shouldEndGame = activePlayers.length <= 1;
+    console.log(`[Game ${this.id}] Multiplayer mode - Should end game (≤1 active): ${shouldEndGame}`);
+
+    if (shouldEndGame) {
+      if (activePlayers.length === 1) {
+        // Il y a un gagnant !
+        const winner = activePlayers[0];
+        console.log(`[Game ${this.id}] MULTIPLAYER WINNER - ${winner.username} (${winner.id}) wins!`);
+        this.winner = winner.id;
+        winner.isWinner = true;
+
+        // 🎯 Le gagnant devient le nouveau host
+        const oldHost = this.host;
+        this.host = winner.id;
+        console.log(`[Game ${this.id}] 👑 Winner ${winner.username} becomes new host (was: ${oldHost})`);
+
+        // Marquer tous les autres comme perdants
+        for (const player of this.players.values()) {
+          if (player.id !== winner.id) {
+            player.isWinner = false;
+            player.gameOver = true;
+            console.log(`[Game ${this.id}] Marking ${player.username} as loser`);
+          }
+        }
+
+      } else {
+        // activePlayers.length === 0 - Tous les joueurs sont éliminés (match nul)
+        console.log(`[Game ${this.id}] MULTIPLAYER DRAW - All players eliminated`);
+        this.winner = null;
+
+        // Marquer tous comme perdants
+        for (const player of this.players.values()) {
+          player.isWinner = false;
+          player.gameOver = true;
+          console.log(`[Game ${this.id}] Marking ${player.username} as eliminated (draw)`);
+        }
+      }
+    }
+  }
+
+  console.log(`[Game ${this.id}] Final decision - shouldEndGame: ${shouldEndGame}`);
+
+  if (shouldEndGame) {
+    console.log(`[Game ${this.id}] TERMINATING GAME`);
+    this.hasJustEnded = true;
+    this.stop();
+    console.log(`[Game ${this.id}] ========= checkGameEnd RETURNING TRUE =========`);
+    return true;
+  }
+
+  console.log(`[Game ${this.id}] Game continues with ${activePlayers.length} active players...`);
+  console.log(`[Game ${this.id}] ========= checkGameEnd RETURNING FALSE =========`);
+  return false;
+}
   /**
    * Renvoie l'état actuel de la partie pour transmission
    * @returns {Object} État de la partie
@@ -526,30 +649,48 @@ export class Game {
   getState() {
     const playerStates = Array.from(this.players.values()).map(player => player.getState());
 
-    return {
+    const state = {
       id: this.id,
       roomName: this.roomName,
       players: playerStates,
       isActive: this.isActive,
-      isOver: this.isOver, // Assuming you might want to add this if it's a property
+      isOver: !this.isActive && this.startedAt !== null, // Partie terminée
       host: this.host,
+      winner: this.winner || null, // ID du gagnant s'il y en a un
+      canRestart: !this.isActive && this.startedAt !== null && this.players.size > 0, // Peut être redémarrée
       createdAt: this.createdAt,
       startedAt: this.startedAt,
+      endedAt: this.endedAt || null,
       initialFallSpeedSetting: this.initialFallSpeedSetting,
-      // pieceSequence: this.pieceSequence, // Potentially large, consider if needed by client
-      // maxPlayers: this.maxPlayers, // Usually static, but could be included
+      maxPlayers: this.maxPlayers
     };
+
+    // Logs temporaires pour debug
+    console.log(`[Game ${this.id}] getState() returning:`, {
+      isActive: state.isActive,
+      isOver: state.isOver,
+      winner: state.winner,
+      canRestart: state.canRestart,
+      playersCount: state.players.length
+    });
+
+    return state;
   }
 
   /**
    * Arrête la partie
    */
   stop() {
+    console.log(`[Game ${this.id}] Stopping game...`);
+    console.log(`[Game ${this.id}] Winner: ${this.winner || 'None'}`);
+
     this.isActive = false;
+    this.endedAt = Date.now();
 
     // Marquer tous les joueurs comme n'étant plus en train de jouer
     for (const player of this.players.values()) {
       player.isPlaying = false;
+      console.log('le joueur', player.username, 'est en isPlaying = false');
       // Conserver le score final, etc.
       if (!player.finalScore) { // Ne pas écraser si déjà défini (ex: par un abandon)
         player.finalScore = player.score;
@@ -557,5 +698,69 @@ export class Game {
       }
     }
     console.log(`[Game ${this.id}] Game stopped. isActive: ${this.isActive}`);
+  }
+
+  /**
+   * Redémarre la partie pour tous les joueurs actuels
+   * @param {string} hostId - ID du joueur qui demande le restart (doit être l'host)
+   * @returns {boolean} true si le restart a réussi
+   */
+  restart(hostId) {
+    // Vérifier que c'est bien l'host qui demande le restart
+    if (this.host !== hostId) {
+      throw new Error('Seul l\'hôte peut redémarrer la partie');
+    }
+
+    // Vérifier que la partie est terminée
+    if (this.isActive) {
+      throw new Error('La partie est encore en cours');
+    }
+
+    // Vérifier qu'il y a au moins un joueur
+    if (this.players.size === 0) {
+      throw new Error('Impossible de redémarrer une partie sans joueurs');
+    }
+
+    console.log(`Redémarrage de la partie ${this.roomName} par l'hôte ${this.host}`);
+
+    // Reset de l'état de la partie
+    this.isActive = false;
+    this.startedAt = null;
+    this.winner = null;
+    this.endedAt = null;
+
+    // Reset de tous les joueurs
+    for (const player of this.players.values()) {
+      this.resetPlayer(player);
+    }
+
+    // Régénérer une nouvelle séquence de pièces
+    this.generateSharedPieceSequence();
+
+    console.log(`Partie ${this.roomName} prête pour un nouveau démarrage`);
+    return true;
+  }
+
+  /**
+   * Remet à zéro l'état d'un joueur pour un nouveau jeu
+   * @param {Player} player - Le joueur à reset
+   */
+  resetPlayer(player) {
+    // Utiliser la méthode resetGame() existante de Player
+    player.resetGame();
+
+    console.log(`Joueur ${player.username} (${player.id}) a été reset`);
+  }
+  /**
+   * Vérifie si la partie peut être redémarrée
+   * @param {string} hostId - ID du joueur qui demande le restart
+   * @returns {boolean} true si le restart est possible
+   */
+  canRestart(hostId) {
+    return (
+      this.host === hostId && // Seul l'host peut restart
+      !this.isActive && // La partie doit être terminée
+      this.players.size > 0 // Il doit y avoir au moins un joueur
+    );
   }
 }

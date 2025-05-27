@@ -5,11 +5,12 @@ import { v4 as uuidv4 } from 'uuid';
  * Classe qui gère l'ensemble des parties de Tetris
  */
 export class GameManager {
-  constructor(broadcastPlayerUpdatesCallback) {
+  constructor(broadcastPlayerUpdatesCallback, onGameConcludedCallback) {
     this.games = new Map(); // Map des parties indexées par ID
     this.playerGameMap = new Map(); // Map des joueurs vers leur partie (playerId -> gameId)
     this.roomNameToIdMap = new Map(); // Map pour associer les noms de salle aux IDs de partie
     this.broadcastPlayerUpdatesCallback = broadcastPlayerUpdatesCallback || (() => {}); // Fallback
+    this.onGameConcluded = onGameConcludedCallback || (() => {}); // Callback for when a game has fully concluded
 
     // Boucle de mise à jour du jeu
     this.lastUpdateTime = new Map();
@@ -26,14 +27,50 @@ export class GameManager {
     this.updateInterval = setInterval(() => {
       // Mettre à jour toutes les parties actives
       for (const game of this.games.values()) {
-        if (game.isActive) {
-          const updateResult = game.update();
+        // GameManager Log: Check game status at the beginning of the tick
+
+        if (game.isActive) { // Process only if game instance considers itself active
+          const wasActive = game.isActive; // Should be true here
+
+          // GameManager Log: Before calling game.update()
+          // console.log(`[GameManager Tick] Game ID: ${game.id}, Before update() - wasActive: ${wasActive}`);
+
+          const updateResult = game.update(); // This calls game.checkGameEnd() which can call game.stop()
+
+          // GameManager Log: After game.update()
+          if (updateResult) {
+            console.log(`[GameManager Tick] Game ID: ${game.id}, After update() - game.isActive: ${game.isActive}, updateResult.gameHasEnded: ${updateResult.gameHasEnded}`);
+          } else {
+            console.log(`[GameManager Tick] Game ID: ${game.id}, After update() - game.isActive: ${game.isActive}, updateResult: null`);
+          }
+
           if (updateResult && updateResult.updatedPlayers && updateResult.updatedPlayers.length > 0) {
             if (this.broadcastPlayerUpdatesCallback) {
               this.broadcastPlayerUpdatesCallback(game.id, updateResult.updatedPlayers);
             }
           }
-          // Gérer gameHasEnded si nécessaire (pas implémenté ici pour l'instant)
+
+          // Check if the game has ended as a result of this update cycle
+          // game.isActive would be false if game.stop() was called within game.update()
+          const shouldConclude = wasActive && updateResult && updateResult.gameHasEnded && !game.isActive;
+          // GameManager Log: Evaluation for concluding the game
+          console.log(`[GameManager Tick] Game ID: ${game.id}, Evaluating conclusion: wasActive=${wasActive}, updateResultExists=${!!updateResult}, gameHasEnded=${updateResult?.gameHasEnded}, !game.isActive=${!game.isActive}, shouldConclude=${shouldConclude}`);
+
+          if (shouldConclude) {
+            // GameManager Log: Condition to conclude met
+            console.log(`[GameManager Tick] Game ID: ${game.id} - CONCLUDING GAME.`);
+            if (this.onGameConcluded) {
+              // game.isActive is now false because game.stop() was called by game.checkGameEnd()
+              this.onGameConcluded(game);
+            }
+          } else if (wasActive && updateResult && updateResult.gameHasEnded && game.isActive) {
+            // GameManager Log: GameHasEnded is true, but game.isActive is STILL true (problem in Game.js stop/checkGameEnd?)
+            console.error(`[GameManager Error] Game ID: ${game.id} - updateResult.gameHasEnded is TRUE, but game.isActive is also TRUE. This shouldn't happen if game.stop() was effective.`);
+          }
+
+        } else {
+          // GameManager Log: Game was not active at the start of this tick, or became inactive.
+          // console.log(`[GameManager Tick] Game ID: ${game.id}, Skipped update logic because initial game.isActive was false.`);
         }
       }
     }, interval);
@@ -231,4 +268,40 @@ export class GameManager {
       }
     }
   }
+
+/**
+ * Redémarre une partie existante
+ * @param {string} gameId - ID de la partie à redémarrer
+ * @param {string} hostId - ID du joueur qui demande le restart (doit être l'hôte)
+ * @returns {Game} La partie redémarrée
+ */
+  restartGame(gameId, hostId) {
+    const game = this.games.get(gameId);
+
+    if (!game) {
+      throw new Error(`Partie ${gameId} introuvable`);
+    }
+
+    // Vérifier que la partie peut être redémarrée
+    if (!game.canRestart(hostId)) {
+      if (game.host !== hostId) {
+        throw new Error('Seul l\'hôte peut redémarrer la partie');
+      }
+      if (game.isActive) {
+        throw new Error('La partie est encore en cours');
+      }
+      if (game.players.size === 0) {
+        throw new Error('Impossible de redémarrer une partie sans joueurs');
+      }
+    }
+
+    // Redémarrer la partie
+    game.restart(hostId);
+
+    console.log(`Partie ${game.roomName} redémarrée par l'hôte ${hostId}`);
+
+    return game;
+  }
 }
+
+

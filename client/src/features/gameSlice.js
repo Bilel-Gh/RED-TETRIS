@@ -110,8 +110,20 @@ export const gameSlice = createSlice({
           });
         }
       } else {
-        // Mise à jour directe de l'état complet du jeu
-        state.gameState = action.payload;
+        const newGameState = action.payload;
+
+    // Synchroniser isActive avec currentGame
+    state.gameState = newGameState;
+
+    if (state.currentGame) {
+        if (typeof newGameState.isActive !== 'undefined') {
+          state.currentGame.isActive = newGameState.isActive;
+        }
+        if (newGameState.host && newGameState.host !== state.currentGame.host) {
+          console.log('updateGameState: Updating host from', state.currentGame.host, 'to', newGameState.host);
+          state.currentGame.host = newGameState.host;
+        }
+      }
       }
     },
     updatePlayers: (state, action) => {
@@ -155,6 +167,13 @@ export const gameSlice = createSlice({
         state.gameState.isWinner = false;
         state.gameState.winner = action.payload.winner;
 
+        if (state.currentGame) {
+          state.currentGame.isActive = false;
+          if (action.payload.host) {
+            state.currentGame.host = action.payload.host;
+          }
+        }
+
         // Stocker les joueurs pour des calculs ultérieurs
         const allPlayers = [];
 
@@ -182,6 +201,8 @@ export const gameSlice = createSlice({
           });
         }
       }
+      console.log('================ gameOver state after update:', state.gameState?.isActive);
+      console.log('🔴 gameOver state after update:', state.gameState?.isActive, 'host:', state.currentGame?.host);
     },
     gameWinner: (state, action) => {
       // Mettre à jour les informations de fin de jeu en cas de victoire
@@ -189,6 +210,14 @@ export const gameSlice = createSlice({
         state.gameState.isActive = false;
         state.gameState.endedAt = action.payload.endedAt;
         state.gameState.isWinner = true;
+
+        if (state.currentGame) {
+          state.currentGame.isActive = false;
+          if (action.payload.host) {
+            state.currentGame.host = action.payload.host;
+            console.log('🏆 Updated host to:', action.payload.host);
+          }
+        }
 
         // Stocker les joueurs pour des calculs ultérieurs
         const allPlayers = [];
@@ -216,6 +245,8 @@ export const gameSlice = createSlice({
           });
         }
       }
+      console.log('================ gameWinner state after update:', state.gameState?.isActive);
+      console.log('🏆 gameWinner state after update:', state.gameState?.isActive, 'host:', state.currentGame?.host);
     },
     penaltyApplied: (state, action) => {
       // Informations sur la pénalité
@@ -236,107 +267,80 @@ export const gameSlice = createSlice({
       if (state.gameState && state.gameState.playerStates && action.payload.player) {
         const playerId = action.payload.player.id;
 
-        // Mettre à jour l'état du joueur spécifique en game over
+        // Mettre à jour l'état du joueur spécifique en game over.
+        // Ne pas modifier gameState.isActive ou déterminer un gagnant ici.
+        // Cela sera géré par des événements serveur (game:over, game:winner) ou des game:state_updated.
         state.gameState.playerStates[playerId] = {
           ...state.gameState.playerStates[playerId],
-          ...action.payload.player, // Contient l'état final du joueur fourni par la logique de jeu
+          ...action.payload.player, // Contient l'état final du joueur
           gameOver: true,
-          isWinner: false  // Un joueur en game over n'est jamais un gagnant
+          isWinner: false
         };
 
-        // Recalculer les joueurs actifs (ceux qui ne sont pas game over)
-        const activePlayersList = Object.values(state.gameState.playerStates)
-          .filter(pState => pState && !pState.gameOver);
-
-        if (activePlayersList.length === 1) {
-          // Exactement un joueur reste actif : il est le gagnant, la partie se termine.
-          const winner = activePlayersList[0];
-          if (winner && state.gameState.playerStates[winner.id]) { // S'assurer que l'état du gagnant existe
-            state.gameState.playerStates[winner.id].isWinner = true;
-            state.gameState.playerStates[winner.id].gameOver = false; // Le gagnant n'est pas en game over
-            state.gameState.winner = winner.id;
-          }
-          state.gameState.isActive = false; // La partie est maintenant inactive
-          state.gameState.endedAt = Date.now();
-        } else if (activePlayersList.length === 0) {
-          // Aucun joueur ne reste actif : la partie se termine.
-          state.gameState.isActive = false;
-          state.gameState.endedAt = Date.now();
-          state.gameState.winner = null; // Pas de gagnant si tous sont en game over
-        }
-        // Si activePlayersList.length > 1, la partie continue (isActive reste true, sauf si déjà false)
+        // La logique précédente qui déterminait un gagnant et modifiait gameState.isActive ici est supprimée.
+        // Le serveur est responsable de déterminer la fin de la partie et le gagnant.
       }
     },
     gameStarted: (state, action) => {
+      state.status = 'succeeded'; // Game has started, so status is succeeded
+      state.error = null;
+
       const actualStartedAt = action.payload.startedAt || Date.now();
 
-      state.currentGame = {
-        ...state.currentGame,
-        isActive: true,
-        startedAt: actualStartedAt
-      };
+      // Update currentGame details
+      if (state.currentGame) {
+        state.currentGame.isActive = true;
+        state.currentGame.startedAt = actualStartedAt;
+      } else {
+        // This case should ideally not happen if join/create game sets currentGame,
+        // but as a fallback:
+        state.currentGame = {
+          id: action.payload.gameId || null, // or some other identifier if available
+          isActive: true,
+          startedAt: actualStartedAt,
+          // other currentGame fields might be unknown here
+        };
+      }
 
-      // Initialiser l'état du jeu si des données sont fournies ou créer un état par défaut
       if (action.payload.initialState) {
         state.gameState = {
-          ...action.payload.initialState, // Spread initial state first
+          ...action.payload.initialState,
           isActive: true,
-          startedAt: action.payload.initialState.startedAt || actualStartedAt,
-          isWinner: false, // Explicitly reset
-          winner: null     // Explicitly reset
+          startedAt: actualStartedAt,
+          isSoloGame: action.payload.initialState.players?.length === 1,
+          playerStates: action.payload.initialState.playerStates || {},
         };
+        // Ensure playerStates are initialized if only players array was in initialState
+        if (action.payload.initialState.players && !action.payload.initialState.playerStates) {
+          state.gameState.playerStates = {};
+          action.payload.initialState.players.forEach(player => {
+            state.gameState.playerStates[player.id] = {
+              ...player,
+              gameOver: false,
+              isWinner: false,
+              // other per-player state defaults
+            };
+          });
+        }
       } else {
-        // Initialiser un état de jeu par défaut si nécessaire
+        // Initialize a default gameState if no initialState is provided
         state.gameState = {
           isActive: true,
-          grid: Array(20).fill().map(() => Array(10).fill("0")), // Default grid
+          grid: Array(20).fill(null).map(() => Array(10).fill("0")),
+          currentPiece: null,     // Ensuring this is present
+          nextPiece: null,      // Ensuring this is present
           score: 0,
           level: 0,
           lines: 0,
-          playerStates: {}, // Initialiser playerStates
-          isSoloGame: true, // Sera ajusté ci-dessous si possible
+          playerStates: {},       // Default to empty if no players info
+          isSoloGame: true,       // Default assumption if no player info
           startedAt: actualStartedAt,
+          endedAt: null,        // Ensuring this is present
           isWinner: false,
-          winner: null
+          winner: null,
+          lastPenalty: null,    // Ensuring this is present
         };
       }
-
-      // S'assurer que playerStates existe
-      if (!state.gameState.playerStates) {
-        state.gameState.playerStates = {};
-      }
-
-      // Initialiser les états des joueurs s'ils sont fournis dans initialState.players
-      // et s'assurer que leur statut gameOver/isWinner est réinitialisé.
-      if (action.payload.initialState && action.payload.initialState.players) {
-        action.payload.initialState.players.forEach(player => {
-          if (player && player.id) {
-            state.gameState.playerStates[player.id] = {
-              ...(state.gameState.playerStates[player.id] || {}), // Conserve l'état existant si fusion
-              ...player, // Applique les nouvelles données du joueur
-              isWinner: false,
-              gameOver: false // Réinitialiser gameOver au démarrage
-            };
-          }
-        });
-      } else {
-        // Si pas de initialState.players, s'assurer que les playerStates existants sont réinitialisés
-         Object.keys(state.gameState.playerStates).forEach(playerId => {
-          if (state.gameState.playerStates[playerId]) {
-            state.gameState.playerStates[playerId].isWinner = false;
-            state.gameState.playerStates[playerId].gameOver = false;
-          }
-        });
-      }
-
-      // Déterminer isSoloGame basé sur le nombre de joueurs dans playerStates
-      // Cela doit se faire après que playerStates soit peuplé.
-      const numPlayers = Object.keys(state.gameState.playerStates).length;
-      state.gameState.isSoloGame = numPlayers <= 1;
-
-
-      // Marquer le jeu comme actif (déjà fait mais pour être sûr)
-      state.gameState.isActive = true;
     },
     // Actions pour le mouvement des pièces
     movePieceLeft: () => {
@@ -380,7 +384,66 @@ export const gameSlice = createSlice({
       state.players = [];
       state.status = 'idle';
       state.error = null;
-    }
+    },
+    restartGameStart: (state) => {
+      state.status = 'loading';
+      state.error = null;
+    },
+    restartGameSuccess: (state) => {
+      state.status = 'succeeded';
+      state.error = null;
+    },
+    restartGameFailure: (state, action) => {
+      state.status = 'failed';
+      state.error = action.payload;
+    },
+    gameRestarted: (state, action) => {
+      // Réinitialiser l'état du jeu pour le restart
+      if (state.currentGame) {
+        state.currentGame.isActive = false;
+        state.currentGame.startedAt = null;
+        state.currentGame.endedAt = null;
+      }
+
+      // Réinitialiser l'état du jeu complet
+      state.gameState = {
+        isActive: false,
+        startedAt: null,
+        endedAt: null,
+        isWinner: false,
+        winner: null,
+        playerStates: {}
+      };
+
+      // Réinitialiser les états des joueurs si fournis
+      if (action.payload.gameState && action.payload.gameState.players) {
+        action.payload.gameState.players.forEach(player => {
+          if (player && player.id) {
+            state.gameState.playerStates[player.id] = {
+              ...player,
+              gameOver: false,
+              isWinner: false,
+              isPlaying: false
+            };
+          }
+        });
+      }
+
+      // Mettre à jour avec le nouvel état du jeu
+      if (action.payload.gameState) {
+        state.gameState = {
+          ...state.gameState,
+          ...action.payload.gameState,
+          isActive: false,
+          playerStates: state.gameState.playerStates // Garder les playerStates qu'on vient de créer
+        };
+      }
+
+      state.status = 'succeeded';
+      state.error = null;
+
+      console.log('Game restarted, ready for new start');
+    },
   }
 });
 
@@ -410,7 +473,11 @@ export const {
   rotatePiece,
   dropPiece,
   autoDropPiece,
-  resetGame
+  resetGame,
+  restartGameStart,
+  restartGameSuccess,
+  restartGameFailure,
+  gameRestarted
 } = gameSlice.actions;
 
 export default gameSlice.reducer;

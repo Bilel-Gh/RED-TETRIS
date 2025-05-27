@@ -25,35 +25,60 @@ export class SocketService {
       reconnectionAttempts: 5
     });
 
-    this.gameManager = new GameManager((gameId, playersToUpdate) => {
-      for (const playerState of playersToUpdate) {
-        // Émission ciblée pour isCurrentPlayer = true
-        this.io.to(playerState.id).emit('game:player_updated', {
-          gameId: gameId,
-          player: { ...playerState, isCurrentPlayer: true }
-        });
-        // Émission générale à la room (sans isCurrentPlayer ou avec false)
-        // Pour éviter que le joueur reçoive deux fois, on pourrait l'exclure de cette émission
-        // ou s'assurer que le client gère correctement les doublons potentiels.
-        // Pour l'instant, une solution simple est d'émettre à la room entière, et le client
-        // qui est le joueur concerné écrasera simplement avec la version isCurrentPlayer.
-        // Une meilleure solution serait d'utiliser socket.broadcast.to(room) depuis le socket du joueur,
-        // mais ici nous sommes dans un contexte global de GameManager.
-
-        // Alternative: émettre à tous les sockets dans la room SAUF celui du joueur actuel.
-        const roomSockets = this.io.sockets.adapter.rooms.get(gameId);
-        if (roomSockets) {
-          roomSockets.forEach(socketId => {
-            if (socketId !== playerState.id) {
-              this.io.to(socketId).emit('game:player_updated', {
-                gameId: gameId,
-                player: { ...playerState, isCurrentPlayer: false } // ou omettre isCurrentPlayer
-              });
-            }
+    this.gameManager = new GameManager(
+      // Callback for broadcasting player updates
+      (gameId, playersToUpdate) => {
+        for (const playerState of playersToUpdate) {
+          this.io.to(playerState.id).emit('game:player_updated', {
+            gameId: gameId,
+            player: { ...playerState, isCurrentPlayer: true }
           });
+          const roomSockets = this.io.sockets.adapter.rooms.get(gameId);
+          if (roomSockets) {
+            roomSockets.forEach(socketId => {
+              if (socketId !== playerState.id) {
+                this.io.to(socketId).emit('game:player_updated', {
+                  gameId: gameId,
+                  player: { ...playerState, isCurrentPlayer: false }
+                });
+              }
+            });
+          }
         }
+      },
+      // Callback for when a game has fully concluded
+      (concludedGame) => {
+        if (!concludedGame) return;
+
+        console.log(`[Server] Game ${concludedGame.id} concluded. Broadcasting results.`);
+        const playersInfo = Array.from(concludedGame.players.values()).map(p => p.getState());
+        const endedTimestamp = concludedGame.endedAt || Date.now();
+
+        for (const player of concludedGame.players.values()) {
+          if (player.id === concludedGame.winner) { // Check if this player is the winner
+            console.log(`[Server] 0 Emitting 'game:winner' to player ${player.id} for game ${concludedGame.id}`);
+            this.io.to(player.id).emit('game:winner', {
+              gameId: concludedGame.id,
+              players: playersInfo,
+              winner: concludedGame.winner,
+              host: concludedGame.host, // Send winner ID
+              endedAt: endedTimestamp
+            });
+          } else {
+            console.log(`[Server] 0 Emitting 'game:over' to player ${player.id} for game ${concludedGame.id}`);
+            this.io.to(player.id).emit('game:over', {
+              gameId: concludedGame.id,
+              players: playersInfo,
+              winner: concludedGame.winner,
+              host: concludedGame.host,
+              endedAt: endedTimestamp
+            });
+          }
+        }
+        // Optionally, also emit a general state update if needed.
+        // this.io.to(concludedGame.id).emit('game:state_updated', concludedGame.getState());
       }
-    });
+    );
 
     // Map des utilisateurs connectés (socketId -> userData)
     this.users = new Map();
@@ -265,6 +290,59 @@ export class SocketService {
         }
       });
 
+      // Redémarrer une partie terminée
+      socket.on('game:restart', (callback) => {
+        try {
+          const user = this.users.get(socket.id);
+
+          if (!user) {
+            throw new Error('Vous devez être connecté');
+          }
+
+          const game = this.gameManager.getPlayerGame(socket.id);
+
+          if (!game) {
+            throw new Error('Vous n\'êtes pas dans une partie');
+          }
+
+          // Vérifier que c'est bien l'hôte qui demande le restart
+          if (game.host !== socket.id) {
+            throw new Error('Seul l\'hôte peut redémarrer la partie');
+          }
+
+          // Vérifier que la partie est terminée
+          if (game.isActive) {
+            throw new Error('La partie est encore en cours');
+          }
+
+          // Redémarrer la partie via le GameManager
+          this.gameManager.restartGame(game.id, socket.id);
+
+          callback({ success: true });
+
+          // Notifier tous les joueurs de la partie que le restart a eu lieu
+          this.io.to(game.id).emit('game:restarted', {
+            gameId: game.id,
+            roomName: game.roomName,
+            host: game.host,
+            restartedAt: Date.now(),
+            gameState: game.getState()
+          });
+
+          // Mettre à jour la liste des parties disponibles
+          this.io.emit('game:list_updated', this.gameManager.getAvailableGames());
+
+          console.log(`Partie ${game.roomName} redémarrée par ${user.username}`);
+
+        } catch (error) {
+          console.error('Erreur lors du restart:', error);
+          callback({
+            success: false,
+            error: error.message
+          });
+        }
+      });
+
       // Lister les parties disponibles
       socket.on('game:list', (callback) => {
         try {
@@ -278,6 +356,8 @@ export class SocketService {
       // --- Actions de jeu ---
 
       // Déplacer la pièce
+// Remplacez votre handler game:move par celui-ci :
+
       socket.on('game:move', (direction, callback) => {
         try {
           const game = this.gameManager.getPlayerGame(socket.id);
@@ -320,6 +400,15 @@ export class SocketService {
 
           callback({ success: true, result });
 
+          console.log(`[Server] Move result for ${player.username}:`, {
+            direction: direction,
+            result: result,
+            'result?.gameOver': result?.gameOver,
+            'result?.isGameOver': result?.isGameOver,
+            'player.gameOver after move': player.gameOver,
+            'player.isPlaying after move': player.isPlaying
+          });
+
           // Si le résultat contient des données de joueur mises à jour, les utiliser
           const playerState = {
             ...(result?.player || player.getState()),
@@ -327,7 +416,6 @@ export class SocketService {
           };
 
           // Envoyer d'abord la mise à jour au joueur qui a fait l'action
-          // avec toutes les informations (pièce courante, prochaine pièce, etc.)
           socket.emit('game:player_updated', {
             gameId: game.id,
             player: playerState
@@ -341,7 +429,6 @@ export class SocketService {
 
           // Si le résultat indique des lignes complétées avec pénalités
           if (result?.penaltyApplied) {
-            // Informer tous les joueurs qu'une pénalité a été appliquée
             this.io.to(game.id).emit('game:penalty_applied', {
               gameId: game.id,
               fromPlayer: player.id,
@@ -350,50 +437,44 @@ export class SocketService {
             });
           }
 
-          // Si le mouvement a provoqué un game over pour ce joueur, émettre l'événement immédiatement
-          if (result?.gameOver) {
-            console.log('Game over détecté pour le joueur', player.username, 'après un mouvement');
+          const gameWasActive = game.isActive;
+          const isGameEnded = game.checkGameEnd();
 
-            // Mettre à jour l'état de game over du joueur
-            player.gameOver = true;
-            player.isPlaying = false;
+          console.log(`[Server] After move - gameWasActive: ${gameWasActive}, isGameEnded: ${isGameEnded}, game.isActive: ${game.isActive}`);
 
-            // Vérifier si c'est la fin du jeu pour tous les joueurs
-            if (game.checkGameEnd()) {
-              // Récupérer les infos pour tous les joueurs
-              const playersInfo = Array.from(game.players.values()).map(p => p.getState());
+          if (gameWasActive && isGameEnded) {
+            // 🏆 LE JEU VIENT DE SE TERMINER - Utiliser le callback existant
+            console.log(`[Server] 🏆 Game ${game.id} just ended! Calling onGameConcluded callback`);
 
-              // Envoyer un événement personnalisé à chaque joueur selon son statut
-              for (const player of game.players.values()) {
-                if (player.isWinner) {
-                  // Envoyer l'événement de victoire au gagnant
-                  this.io.to(player.id).emit('game:winner', {
-                    gameId: game.id,
-                    players: playersInfo,
-                    endedAt: Date.now()
-                  });
-                } else {
-                  // Envoyer l'événement de défaite aux autres joueurs
-                  this.io.to(player.id).emit('game:over', {
-                    gameId: game.id,
-                    players: playersInfo,
-                    winner: game.winner,
-                    endedAt: Date.now()
-                  });
-                }
+            // Utiliser directement le callback onGameConcluded du constructeur
+            // (c'est la même logique que dans le callback du constructeur SocketService)
+            const playersInfo = Array.from(game.players.values()).map(p => p.getState());
+            const endedTimestamp = game.endedAt || Date.now();
+
+            for (const gamePlayer of game.players.values()) {
+              if (gamePlayer.id === game.winner) {
+                console.log(`[Server] 🏆 Emitting 'game:winner' to winner ${gamePlayer.username} (${gamePlayer.id})`);
+                this.io.to(gamePlayer.id).emit('game:winner', {
+                  gameId: game.id,
+                  players: playersInfo,
+                  winner: game.winner,
+                  endedAt: endedTimestamp
+                });
+              } else {
+                console.log(`[Server] 💀 Emitting 'game:over' to loser ${gamePlayer.username} (${gamePlayer.id})`);
+                this.io.to(gamePlayer.id).emit('game:over', {
+                  gameId: game.id,
+                  players: playersInfo,
+                  winner: game.winner,
+                  endedAt: endedTimestamp
+                });
               }
-            } else {
-              // Notifier uniquement le joueur en game over si la partie continue pour les autres
-              socket.emit('game:player_gameover', {
-                gameId: game.id,
-                player: {
-                  ...player.getState(),
-                  gameOver: true,
-                  isCurrentPlayer: true
-                }
-              });
             }
+
+            // État global mis à jour
+            this.io.to(game.id).emit('game:state_updated', game.getState());
           }
+
         } catch (error) {
           console.error('Erreur lors du mouvement:', error);
           callback({
@@ -440,6 +521,7 @@ export class SocketService {
         // Notifier les autres utilisateurs
         this.io.emit('user:left', { id: socket.id });
       });
+
     });
 
     // Démarrer le nettoyage périodique des parties
