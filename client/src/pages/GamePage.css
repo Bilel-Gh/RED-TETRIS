@@ -179,8 +179,10 @@
 
 .tetris-and-next {
   display: flex;
+  flex-direction: column;
   gap: 20px;
-  align-items: flex-start;
+  align-items: center;
+  width: 100%;
 }
 
 .next-piece-side-container {
@@ -301,15 +303,16 @@
 /* Styles pour les contrôles mobiles */
 .mobile-controls {
   display: none;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   background-color: var(--grid-bg-color);
   border-radius: 10px;
   padding: 15px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--grid-border-color);
-  margin-top: 20px;
+  margin: 20px auto;
   width: 100%;
+  max-width: 500px;
 }
 
 .control-btn {
@@ -326,10 +329,15 @@
   justify-content: center;
   align-items: center;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  width: 100%;
+  height: 100%;
+  min-height: 50px;
 }
 
 .drop-btn {
-  grid-column: span 3;
   background-color: var(--primary-color);
 }
 
@@ -360,15 +368,34 @@
 @media (max-width: 768px) {
   .mobile-controls {
     display: grid;
+    width: 90%;
+    max-width: 400px;
   }
 
   .controls-help {
-    display: none; /* Masquer l'aide sur mobile pour gagner de l'espace */
+    display: none;
   }
 
   .action-feedback {
     font-size: 14px;
     padding: 8px 16px;
+  }
+
+  .game-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .start-button, .leave-button, .logout-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    text-align: center;
+    touch-action: manipulation;
   }
 }
 
@@ -451,6 +478,12 @@
   color: white;
   position: relative;
   overflow: hidden;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 150px;
+  text-align: center;
 }
 
 .start-button:hover {
@@ -868,6 +901,7 @@
   .theme-toggle-container {
     top: 10px;
     left: 10px;
+    max-height: 50px;
   }
 }
 
@@ -944,7 +978,7 @@
 
 .control-btn:active {
   transform: scale(0.95);
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+  background-color: var(--primary-color);
 }
 
 /* Styles pour le redémarrage de la partie */

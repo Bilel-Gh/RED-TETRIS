@@ -383,11 +383,59 @@ const GamePage = () => {
                   grid={gameState.grid}
                   currentPiece={gameState.currentPiece}
                 />
-              </div>
-              <div className="game-sidebar">
+                {/* Contrôles à l'écran pour mobiles */}
+                <div className="mobile-controls">
+                  <button
+                    className="control-btn"
+                    onTouchStart={() => moveLeft()}
+                    onClick={() => moveLeft()}
+                    onTouchEnd={(e) => e.preventDefault()}
+                    aria-label="Gauche"
+                  >
+                    ←
+                  </button>
+                  <button
+                    className="control-btn"
+                    onTouchStart={() => moveDown()}
+                    onClick={() => moveDown()}
+                    onTouchEnd={(e) => e.preventDefault()}
+                    aria-label="Bas"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    className="control-btn"
+                    onTouchStart={() => rotate()}
+                    onClick={() => rotate()}
+                    onTouchEnd={(e) => e.preventDefault()}
+                    aria-label="Rotation"
+                  >
+                    ↻
+                  </button>
+                  <button
+                    className="control-btn"
+                    onTouchStart={() => moveRight()}
+                    onClick={() => moveRight()}
+                    onTouchEnd={(e) => e.preventDefault()}
+                    aria-label="Droite"
+                  >
+                    →
+                  </button>
+                  <button
+                    className="control-btn drop-btn"
+                    onTouchStart={() => drop()}
+                    onClick={() => drop()}
+                    onTouchEnd={(e) => e.preventDefault()}
+                    aria-label="Chute instantanée"
+                  >
+                    ⤓
+                  </button>
+                </div>
                 <div className="next-piece-side-container">
                   <NextPiece type={gameState.nextPiece} />
                 </div>
+              </div>
+              <div className="game-sidebar">
                 <div className="game-stats">
                   <div className="stat-item">
                     <span className="stat-label">Score</span>
@@ -435,45 +483,6 @@ const GamePage = () => {
                     </button>
                   </>
                 )}
-
-                {/* Contrôles à l'écran pour mobiles */}
-                <div className="mobile-controls">
-                  <button
-                    className="control-btn"
-                    onTouchStart={() => moveLeft()}
-                    aria-label="Gauche"
-                  >
-                    ←
-                  </button>
-                  <button
-                    className="control-btn"
-                    onTouchStart={() => rotate()}
-                    aria-label="Rotation"
-                  >
-                    ↻
-                  </button>
-                  <button
-                    className="control-btn"
-                    onTouchStart={() => moveRight()}
-                    aria-label="Droite"
-                  >
-                    →
-                  </button>
-                  <button
-                    className="control-btn"
-                    onTouchStart={() => moveDown()}
-                    aria-label="Bas"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    className="control-btn drop-btn"
-                    onTouchStart={() => drop()}
-                    aria-label="Chute instantanée"
-                  >
-                    ⤓
-                  </button>
-                </div>
 
                 <div className="controls-help">
                   <p>Contrôles:</p>

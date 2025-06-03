@@ -357,5 +357,6 @@
   .theme-toggle-container {
     top: 10px;
     left: 10px;
+    max-height: 50px;
   }
 }
