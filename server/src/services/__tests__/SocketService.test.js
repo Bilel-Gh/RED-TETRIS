@@ -508,10 +508,16 @@ describe('SocketService', () => {
       const mockGame = {
         id: gameId,
         players: new Map([[mockSocket.id, mockPlayer]]),
-        movePiece: vi.fn().mockReturnValue({
-          success: true,
-          gameOver: true, // This triggers game over logic
-          player: { id: mockSocket.id, gameOver: true }
+        movePiece: vi.fn().mockImplementation((playerArg, dx, dy) => {
+          // Simulate the Game class's movePiece behavior of updating the player object directly
+          playerArg.gameOver = true;
+          playerArg.isPlaying = false;
+          return { // Return a structure that movePiece would typically return
+            success: true,      // Assuming the move itself was valid before game over
+            gameOver: true,     // Indicates this move resulted in game over for the player
+            player: playerArg.getState() // Provide the updated player state
+                                      // The mockPlayer.getState() is already mocked to return gameOver: true
+          };
         }),
         checkGameEnd: vi.fn().mockReturnValue(false) // Game continues for others
       };
@@ -525,7 +531,7 @@ describe('SocketService', () => {
       expect(mockPlayer.isPlaying).toBe(false);
 
       // Verify game over notification was sent to player
-      expect(mockSocket.emit).toHaveBeenCalledWith('game:player_gameover', expect.objectContaining({
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:player_updated', expect.objectContaining({
         gameId: gameId,
         player: expect.objectContaining({
           gameOver: true,

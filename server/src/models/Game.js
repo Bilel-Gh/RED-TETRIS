@@ -469,7 +469,7 @@ export class Game {
     }
 
     const updatedPlayers = [];
-    let gameHasEnded = false;
+    // let gameHasEnded = false; // This will be determined at the end
 
     // Mettre à jour chaque joueur actif
     for (const player of this.players.values()) {
@@ -491,34 +491,45 @@ export class Game {
         if (moveResult.player) {
           updatedPlayers.push(moveResult.player);
         }
-
-        // 🎯 Vérifier si ce mouvement a causé la fin du jeu
-        if (moveResult.gameOver) {
-          console.log(`[Game ${this.id}] Player ${player.username} game over in auto-move, checking game end...`);
-          const gameEnded = this.checkGameEnd();
-          if (gameEnded) {
-            gameHasEnded = true;
-            console.log(`[Game ${this.id}] ✅ Game ended due to auto-move!`);
-            break; // Sortir de la boucle car le jeu est terminé
-          }
-        }
+        // Removed conditional checkGameEnd and gameHasEnded update from here
       }
     }
 
-    // 🎯 Alternative : utiliser le flag hasJustEnded
-    if (this.hasJustEnded) {
-      gameHasEnded = true;
-      this.hasJustEnded = false; // Reset le flag
-      console.log(`[Game ${this.id}] ✅ Game ended (detected via hasJustEnded flag)!`);
+    // Always run checkGameEnd if the game was active entering this update,
+    // to update its state and potentially stop it.
+    // The checkGameEnd method itself will set this.isActive to false if the game ends.
+    if (this.isActive) { // Check this.isActive before calling, as it might have changed due to player actions not covered here
+        this.checkGameEnd(); // This method handles its own logic, including calling this.stop()
+                             // and setting this.isActive = false, this.hasJustEnded = true if game ends.
     }
+
+    // Determine the gameHasEnded status for the return value.
+    // A game is considered "ended" if it has started and is no longer active.
+    const finalGameHasEnded = (this.startedAt !== null && !this.isActive);
+
+    // If the game did end in this cycle (or was already ended and confirmed by checkGameEnd),
+    // and the hasJustEnded flag was set by checkGameEnd, we can consume/reset it.
+    if (finalGameHasEnded && this.hasJustEnded) {
+        this.hasJustEnded = false; // Reset the flag as its purpose for this cycle is done.
+        console.log(`[Game ${this.id}] Consumed hasJustEnded flag as game is confirmed over.`);
+    } else if (this.hasJustEnded && !finalGameHasEnded) {
+        // This case might indicate hasJustEnded was set (e.g. by spawnPiece), but checkGameEnd
+        // didn't confirm an overall game end (e.g. solo game, player game over but game not over yet).
+        // Or multiplayer, one player out, but game continues.
+        // In this case, we should probably let hasJustEnded persist if it means something for the *next* cycle.
+        // However, the original logic was to reset it if (this.hasJustEnded) { gameHasEnded = true; this.hasJustEnded = false; }
+        // For now, let's stick to resetting it if the game is declared ended by this update.
+        // The primary role of hasJustEnded seems to be an internal signal for checkGameEnd.
+    }
+
 
     console.log(`[Game ${this.id}] update() returning:`, {
       updatedPlayers: updatedPlayers.length,
-      gameHasEnded: gameHasEnded,
+      gameHasEnded: finalGameHasEnded,
       isActive: this.isActive
     });
 
-    return { updatedPlayers, gameHasEnded };
+    return { updatedPlayers, gameHasEnded: finalGameHasEnded };
   }
   /**
    * Vérifie si la partie est terminée (tous les joueurs en game over)

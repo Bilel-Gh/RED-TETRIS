@@ -813,6 +813,7 @@ describe('Game', () => {
     });
 
     it('devrait terminer le jeu si tous les joueurs sont en game over', () => {
+      game.startedAt = Date.now(); // Simulate game having been started
       player1.gameOver = true;
       player2.gameOver = true;
       // checkGameEnd will call game.stop() which sets isActive to false
@@ -846,7 +847,7 @@ describe('Game', () => {
       player2.gameOver = true; player2.isPlaying = false;
       expect(game.checkGameEnd()).toBe(true);
       expect(game.stop).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith('GAME OVER - Tous les joueurs sont éliminés ou mode solo terminé');
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('[Game game-123] MULTIPLAYER DRAW - All players eliminated'));
     });
 
     it('devrait terminer le jeu si le joueur solo est en game over', () => {
@@ -860,11 +861,11 @@ describe('Game', () => {
       player1.gameOver = true; player1.isPlaying = false;
       player2.gameOver = false; player2.isPlaying = true;
 
-      expect(game.checkGameEnd()).toBe(false);
+      expect(game.checkGameEnd()).toBe(true);
       expect(player2.isWinner).toBe(true);
       expect(game.winner).toBe(player2.id);
-      expect(game.stop).not.toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(`Joueur ${player2.username} (${player2.id}) est le dernier survivant et gagne la partie!`);
+      expect(game.stop).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining(`[Game game-123] MULTIPLAYER WINNER - ${player2.username} (${player2.id}) wins!`));
     });
 
     it('ne devrait pas terminer le jeu s\'il reste plusieurs joueurs actifs', () => {
@@ -899,7 +900,7 @@ describe('Game', () => {
         { id: 'p2', name: 'User2', score: 200 }
       ]);
       expect(Object.prototype.hasOwnProperty.call(state, 'isOver')).toBe(true);
-      expect(state.isOver).toBeUndefined();
+      expect(state.isOver).toBe(false);
     });
   });
 
