@@ -498,7 +498,7 @@ export const startGame = async () => {
 };
 
 // Envoyer un mouvement au serveur
-export const movePiece = async (direction, isAutoMove = false) => {
+export const movePiece = async (direction) => {
   try {
     await ensureConnection();
 
@@ -507,48 +507,14 @@ export const movePiece = async (direction, isAutoMove = false) => {
       return { success: false, error: "Vous devez être connecté" };
     }
 
-    // Traitement local immédiat pour un retour plus réactif
-    let didMove = false;
-
     return new Promise((resolve) => {
-      // Définir un timeout court pour éviter de bloquer l'interface
-      // Utiliser un timeout plus court pour les chutes automatiques
-      const timeoutDuration = isAutoMove ? 50 : 100;
-
-      const timeout = setTimeout(() => {
-        // Résoudre avec une réponse locale si le serveur ne répond pas assez vite
-        if (!isAutoMove) {
-          console.warn('Le serveur ne répond pas assez vite, utilisation du retour local');
-        }
-        resolve({
-          success: true,
-          result: { moved: didMove },
-          warning: 'Réponse locale - le serveur ne répond pas assez vite'
-        });
-      }, timeoutDuration);
-
       socket.emit('game:move', direction, (response) => {
-        clearTimeout(timeout);
-
         if (response && response.success) {
-          didMove = true; // Marquer que le mouvement a été effectué
-
-          // Si le serveur indique que la partie est terminée ou que le joueur est éliminé
-          if (response.message) {
-            return resolve({
-              success: true,
-              result: response.result || { moved: false },
-              message: response.message
-            });
-          }
-
           resolve({ success: true, result: response.result });
         } else {
-          if (!isAutoMove) {
-            // Ne pas afficher d'erreur pour les parties terminées
-            if (response?.error && !response.error.includes('Partie non active')) {
-              console.error('Erreur lors du déplacement:', response?.error || 'Pas de réponse');
-            }
+          // Ne pas polluer la console d'erreurs si c'est juste la fin de partie.
+          if (response?.error && !response.error.includes('Partie non active')) {
+            console.error('Erreur lors du déplacement:', response.error);
           }
           resolve({ success: false, error: response?.error || 'Erreur inconnue' });
         }

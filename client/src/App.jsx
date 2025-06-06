@@ -9,8 +9,13 @@ import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
 // import GameOverPage from './pages/GameOverPage'; Commenting out GameOverPage
 import { socketService } from './services/socketService';
+import { store } from './store';
 import './App.css';
 import './components/Tetris.css';
+import PageTransition from './components/PageTransition';
+
+// Initialisation du service Socket.io avec le store Redux
+socketService.connect(store);
 
 // Composant de détection de la connexion réseau
 const ConnectionMonitor = () => {

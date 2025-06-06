@@ -13,9 +13,41 @@ export const gameSlice = createSlice({
   name: 'game',
   initialState,
   reducers: {
-    fetchGamesStart: (state) => {
+    // Actions interceptées par le middleware pour déclencher des appels socket
+    getGames: (state) => {
       state.status = 'loading';
     },
+    createGame: (state) => {
+      state.status = 'loading';
+    },
+    joinGame: (state) => {
+      state.status = 'loading';
+    },
+    startGame: (state) => {
+      state.status = 'loading';
+    },
+    restartGame: (state) => {
+      state.status = 'loading';
+      state.error = null;
+    },
+    // L'action `leaveGame` est conservée mais le reducer est modifié pour ne plus être qu'une transition d'état client
+    leaveGame: (state) => {
+      state.currentGame = null;
+      state.players = [];
+      state.gameState = null;
+      state.status = 'idle';
+    },
+    // Les actions de mouvement n'ont pas besoin de changer l'état ici,
+    // car la réponse du serveur via 'game:player_updated' le fera.
+    // Le middleware les intercepte sans que le reducer ait à faire quoi que ce soit.
+    movePieceLeft: () => {},
+    movePieceRight: () => {},
+    movePieceDown: () => {},
+    rotatePiece: () => {},
+    dropPiece: () => {},
+    autoDropPiece: () => {},
+
+    // Reducers pour les réponses du serveur (inchangés)
     fetchGamesSuccess: (state, action) => {
       state.status = 'succeeded';
       state.gameList = action.payload;
@@ -25,15 +57,10 @@ export const gameSlice = createSlice({
       state.status = 'failed';
       state.error = action.payload;
     },
-    createGameStart: (state) => {
-      state.status = 'loading';
-    },
     createGameSuccess: (state, action) => {
       state.status = 'succeeded';
       state.currentGame = action.payload;
       state.players = action.payload.players || [];
-
-      // Initialiser correctement l'état du jeu lors de la création
       state.gameState = {
         isActive: false,
         startedAt: null,
@@ -41,16 +68,10 @@ export const gameSlice = createSlice({
         winner: null,
         playerStates: {}
       };
-
-      // Initialiser l'état pour chaque joueur
       if (action.payload.players) {
         action.payload.players.forEach(player => {
           if (player && player.id) {
-            state.gameState.playerStates[player.id] = {
-              ...player,
-              isWinner: false,
-              gameOver: false
-            };
+            state.gameState.playerStates[player.id] = { ...player, isWinner: false, gameOver: false };
           }
         });
       }
@@ -58,9 +79,6 @@ export const gameSlice = createSlice({
     createGameFailure: (state, action) => {
       state.status = 'failed';
       state.error = action.payload;
-    },
-    joinGameStart: (state) => {
-      state.status = 'loading';
     },
     joinGameSuccess: (state, action) => {
       state.status = 'succeeded';
@@ -70,11 +88,6 @@ export const gameSlice = createSlice({
     joinGameFailure: (state, action) => {
       state.status = 'failed';
       state.error = action.payload;
-    },
-    leaveGame: (state) => {
-      state.currentGame = null;
-      state.players = [];
-      state.gameState = null;
     },
     updateGameState: (state, action) => {
       // Si on reçoit des données sur un joueur spécifique
@@ -342,53 +355,6 @@ export const gameSlice = createSlice({
         };
       }
     },
-    // Actions pour le mouvement des pièces
-    movePieceLeft: () => {
-      // Cette action sera interceptée par un middleware qui enverra une requête au serveur
-    },
-    movePieceRight: () => {
-      // Cette action sera interceptée par un middleware qui enverra une requête au serveur
-    },
-    movePieceDown: () => {
-      // Cette action sera interceptée par un middleware qui enverra une requête au serveur
-    },
-    rotatePiece: () => {
-      // Cette action sera interceptée par un middleware qui enverra une requête au serveur
-    },
-    dropPiece: () => {
-      // Cette action sera interceptée par un middleware qui enverra une requête au serveur
-    },
-    autoDropPiece: () => {
-      // Cette action sera interceptée par un middleware qui enverra une requête au serveur
-    },
-    // Réinitialiser l'état du jeu
-    resetGame: (state) => {
-      // Sauvegarder temporairement les résultats de la partie terminée pour utilisation potentielle dans GameOverPage
-      if (state.gameState && !state.gameState.isActive) {
-        state.gameResults = {
-          endedAt: state.gameState.endedAt,
-          players: Object.values(state.gameState.playerStates || {}).map(player => ({
-            id: player.id,
-            username: player.username,
-            score: player.score || 0,
-            level: player.level || 1,
-            lines: player.lines || 0,
-            gameOver: true
-          }))
-        };
-      }
-
-      // Réinitialiser l'état complet du jeu
-      state.currentGame = null;
-      state.gameState = null;
-      state.players = [];
-      state.status = 'idle';
-      state.error = null;
-    },
-    restartGameStart: (state) => {
-      state.status = 'loading';
-      state.error = null;
-    },
     restartGameSuccess: (state) => {
       state.status = 'succeeded';
       state.error = null;
@@ -448,16 +414,18 @@ export const gameSlice = createSlice({
 });
 
 export const {
-  fetchGamesStart,
+  getGames,
+  createGame,
+  joinGame,
+  startGame,
+  restartGame,
+  leaveGame,
   fetchGamesSuccess,
   fetchGamesFailure,
-  createGameStart,
   createGameSuccess,
   createGameFailure,
-  joinGameStart,
   joinGameSuccess,
   joinGameFailure,
-  leaveGame,
   updateGameState,
   updatePlayers,
   playerJoined,
@@ -474,7 +442,6 @@ export const {
   dropPiece,
   autoDropPiece,
   resetGame,
-  restartGameStart,
   restartGameSuccess,
   restartGameFailure,
   gameRestarted
