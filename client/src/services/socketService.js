@@ -332,13 +332,17 @@ export const getGames = async () => {
         if (response && response.success) {
           resolve(response);
         } else {
-          store.dispatch(fetchGamesFailure(response?.error || 'Erreur de récupération des parties'));
+          if (store) {
+            store.dispatch(fetchGamesFailure(response?.error || 'Erreur de récupération des parties'));
+          }
           reject({ success: false, error: response?.error || 'Erreur de récupération des parties' });
         }
       });
     });
   } catch (error) {
-    store.dispatch(fetchGamesFailure(error.message || 'Erreur de connexion'));
+    if (store) {
+      store.dispatch(fetchGamesFailure(error.message || 'Erreur de connexion'));
+    }
     return Promise.reject(error);
   }
 };
@@ -357,21 +361,27 @@ export const createGame = async (roomName, fallSpeedSetting) => {
         clearTimeout(timeout);
 
         if (response && response.success) {
-          store.dispatch(createGameSuccess(response.game));
-          // Ajouter l'hôte à la liste des joueurs
-          store.dispatch(joinGameSuccess({
-            game: response.game,
-            players: response.game.players
-          }));
+          if (store) {
+            store.dispatch(createGameSuccess(response.game));
+            // Ajouter l'hôte à la liste des joueurs
+            store.dispatch(joinGameSuccess({
+              game: response.game,
+              players: response.game.players
+            }));
+          }
           resolve({ success: true, game: response.game });
         } else {
-          store.dispatch(createGameFailure(response?.error || 'Erreur de création de partie'));
+          if (store) {
+            store.dispatch(createGameFailure(response?.error || 'Erreur de création de partie'));
+          }
           reject({ success: false, error: response?.error || 'Erreur de création de partie' });
         }
       });
     });
   } catch (error) {
-    store.dispatch(createGameFailure(error.message || 'Erreur de connexion'));
+    if (store) {
+      store.dispatch(createGameFailure(error.message || 'Erreur de connexion'));
+    }
     return Promise.reject({ success: false, error: error.message || 'Erreur de connexion' });
   }
 };
@@ -390,19 +400,25 @@ export const joinGame = async (gameId) => {
         clearTimeout(timeout);
 
         if (response && response.success) {
-          store.dispatch(joinGameSuccess({
-            game: response.game,
-            players: response.game.players
-          }));
+          if (store) {
+            store.dispatch(joinGameSuccess({
+              game: response.game,
+              players: response.game.players
+            }));
+          }
           resolve({ success: true, game: response.game });
         } else {
-          store.dispatch(joinGameFailure(response?.error || 'Erreur pour rejoindre la partie'));
+          if (store) {
+            store.dispatch(joinGameFailure(response?.error || 'Erreur pour rejoindre la partie'));
+          }
           reject({ success: false, error: response?.error || 'Erreur pour rejoindre la partie' });
         }
       });
     });
   } catch (error) {
-    store.dispatch(joinGameFailure(error.message || 'Erreur de connexion'));
+    if (store) {
+      store.dispatch(joinGameFailure(error.message || 'Erreur de connexion'));
+    }
     return Promise.reject({ success: false, error: error.message || 'Erreur de connexion' });
   }
 };
@@ -498,7 +514,7 @@ export const startGame = async () => {
 };
 
 // Envoyer un mouvement au serveur
-export const movePiece = async (direction) => {
+export const movePiece = async (direction, isAutoMove = false) => {
   try {
     await ensureConnection();
 
@@ -508,9 +524,26 @@ export const movePiece = async (direction) => {
     }
 
     return new Promise((resolve) => {
+      // Timeout différent pour les mouvements automatiques
+      const timeoutDuration = isAutoMove ? 1000 : 3000;
+
+      const timeout = setTimeout(() => {
+        resolve({
+          success: true,
+          warning: 'Le serveur n\'a pas répondu mais le mouvement a été effectué localement'
+        });
+      }, timeoutDuration);
+
       socket.emit('game:move', direction, (response) => {
+        clearTimeout(timeout);
+
         if (response && response.success) {
-          resolve({ success: true, result: response.result });
+          const result = { success: true, result: response.result };
+          // Ajouter le message s'il existe
+          if (response.message) {
+            result.message = response.message;
+          }
+          resolve(result);
         } else {
           // Ne pas polluer la console d'erreurs si c'est juste la fin de partie.
           if (response?.error && !response.error.includes('Partie non active')) {

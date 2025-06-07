@@ -6,7 +6,7 @@ import './OpponentGrid.css';
  */
 const OpponentGrid = ({ username, grid, score, gameOver, spectrum }) => {
   // Calcul de la hauteur maximale pour le rendu visuel du spectre
-  const maxHeight = grid.length;
+  const maxHeight = grid ? grid.length : 20; // Valeur par défaut si grid est null
 
   return (
     <div className={`opponent-grid-container ${gameOver ? 'game-over' : ''}`}>

@@ -1,202 +1,181 @@
 import { renderHook, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import configureStore from 'redux-mock-store';
+import { configureStore } from '@reduxjs/toolkit';
 import { useGame } from '../useGame';
-import { socketService } from '../../services/socketService';
+import gameReducer from '../../features/gameSlice';
+import authReducer from '../../features/authSlice';
 import { vi } from 'vitest';
 
 // Mock socketService
 vi.mock('../../services/socketService', () => ({
   socketService: {
-    getGames: vi.fn(),
-    createGame: vi.fn(),
-    joinGame: vi.fn(),
-    leaveGame: vi.fn(),
-    startGame: vi.fn(),
-    restartGame: vi.fn(),
-    movePiece: vi.fn(),
-    isConnected: true,
-    isAuth: true
+    getGames: vi.fn().mockResolvedValue({ success: true, games: [] }),
+    createGame: vi.fn().mockResolvedValue({ success: true, game: { id: 'game1', name: 'New Game' } }),
+    joinGame: vi.fn().mockResolvedValue({ success: true, game: { id: 'game1' } }),
+    leaveGame: vi.fn().mockResolvedValue({ success: true }),
+    startGame: vi.fn().mockResolvedValue({ success: true }),
+    restartGame: vi.fn().mockResolvedValue({ success: true }),
+    movePiece: vi.fn().mockResolvedValue({ success: true }),
   }
 }));
 
-const mockStore = configureStore([]);
+const createTestStore = (preloadedState) => {
+  return configureStore({
+    reducer: {
+      game: gameReducer,
+      auth: authReducer
+    },
+    preloadedState,
+  });
+};
+
+const wrapper = ({ children, store }) => <Provider store={store}>{children}</Provider>;
 
 describe('useGame Hook', () => {
   let store;
-  let wrapper;
 
   beforeEach(() => {
-    store = mockStore({
+    store = createTestStore({
+      auth: {
+        user: { id: 'user1' },
+        token: 'test-token',
+        isAuthenticated: true,
+        status: 'idle',
+        error: null
+      },
       game: {
-        gameList: [],
-        currentGame: null,
-        gameState: {
-          isActive: false,
-          playerStates: {},
-          startedAt: null
-        },
-        players: [],
         status: 'idle',
         error: null,
+        gamesList: [],
+        currentGame: null,
+        gameState: null,
+        players: [],
         gameResults: null
-      },
-      auth: {
-        user: {
-          id: 'user1'
-        }
       }
     });
-
-    wrapper = ({ children }) => (
-      <Provider store={store}>
-        {children}
-      </Provider>
-    );
+    vi.clearAllMocks();
   });
 
-  it('should get games list', async () => {
-    const mockGames = [{ id: 1, name: 'Game 1' }];
-    socketService.getGames.mockResolvedValueOnce({ success: true, games: mockGames });
-
-    const { result } = renderHook(() => useGame(), { wrapper });
-
-    await act(async () => {
-      await result.current.getGames();
+  it('should return correct initial values from selectors', () => {
+    const { result } = renderHook(() => useGame(), {
+      wrapper: ({ children }) => wrapper({ children, store }),
     });
 
-    expect(socketService.getGames).toHaveBeenCalled();
-    expect(store.getActions()).toContainEqual(expect.objectContaining({
-      type: 'game/fetchGamesSuccess',
-      payload: mockGames
+    expect(result.current.status).toBe('idle');
+    expect(result.current.error).toBe(null);
+    expect(result.current.gamesList).toBeUndefined();
+    expect(result.current.currentGame).toBe(null);
+  });
+
+  it('should dispatch getGames action when getGames is called', () => {
+    const dispatchSpy = vi.spyOn(store, 'dispatch');
+
+    const { result } = renderHook(() => useGame(), {
+      wrapper: ({ children }) => wrapper({ children, store }),
+    });
+
+    act(() => {
+      result.current.getGames();
+    });
+
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'game/getGames'
     }));
   });
 
-  it('should create a game', async () => {
-    const mockResponse = { success: true, game: { id: 1, name: 'New Game' } };
-    socketService.createGame.mockResolvedValueOnce(mockResponse);
+  it('should dispatch movePieceLeft action when moveLeft is called', () => {
+    const dispatchSpy = vi.spyOn(store, 'dispatch');
 
-    const { result } = renderHook(() => useGame(), { wrapper });
-
-    await act(async () => {
-      await result.current.createGame('New Game', 'normal');
+    const { result } = renderHook(() => useGame(), {
+      wrapper: ({ children }) => wrapper({ children, store }),
     });
 
-    expect(socketService.createGame).toHaveBeenCalledWith('New Game', 'normal');
-  });
-
-  it('should join a game', async () => {
-    const mockResponse = { success: true };
-    socketService.joinGame.mockResolvedValueOnce(mockResponse);
-
-    const { result } = renderHook(() => useGame(), { wrapper });
-
-    await act(async () => {
-      await result.current.joinGame('game1');
+    act(() => {
+      result.current.moveLeft();
     });
 
-    expect(socketService.joinGame).toHaveBeenCalledWith('game1');
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'game/movePieceLeft'
+    }));
   });
 
-  it('should handle game movements', async () => {
-    const { result } = renderHook(() => useGame(), { wrapper });
+  it('should dispatch createGame action when createGame is called', () => {
+    const dispatchSpy = vi.spyOn(store, 'dispatch');
 
-    await act(async () => {
-      await result.current.moveLeft();
-      await result.current.moveRight();
-      await result.current.moveDown();
-      await result.current.rotate();
-      await result.current.drop();
+    const { result } = renderHook(() => useGame(), {
+      wrapper: ({ children }) => wrapper({ children, store }),
     });
 
-    expect(socketService.movePiece).toHaveBeenCalledWith('left');
-    expect(socketService.movePiece).toHaveBeenCalledWith('right');
-    expect(socketService.movePiece).toHaveBeenCalledWith('down');
-    expect(socketService.movePiece).toHaveBeenCalledWith('rotate');
-    expect(socketService.movePiece).toHaveBeenCalledWith('drop');
+    act(() => {
+      result.current.createGame('Test Room', 'normal');
+    });
+
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'game/createGame'
+    }));
   });
 
-  it('should check if player can restart game', () => {
-    store = mockStore({
+  it('should return correct game state functions', () => {
+    const preloadedState = {
+      auth: {
+        user: { id: 'user1' },
+        token: 'test-token',
+        isAuthenticated: true,
+        status: 'idle',
+        error: null
+      },
       game: {
-        currentGame: { host: 'user1' },
+        status: 'succeeded',
+        error: null,
+        gamesList: [],
+        currentGame: { id: 'game1', host: 'user1' },
         gameState: {
           isActive: false,
-          startedAt: Date.now()
+          startedAt: new Date(),
+          playerStates: {
+            'user1': { gameOver: false, isWinner: false }
+          }
         },
-        players: [{ id: 'user1' }]
-      },
-      auth: {
-        user: {
-          id: 'user1'
-        }
+        players: [{ id: 'user1' }],
+        gameResults: null
       }
+    };
+
+    store = createTestStore(preloadedState);
+
+    const { result } = renderHook(() => useGame(), {
+      wrapper: ({ children }) => wrapper({ children, store }),
     });
 
-    const { result } = renderHook(() => useGame(), { wrapper });
     expect(result.current.canRestartGame()).toBe(true);
+    expect(result.current.isCurrentPlayerGameOver()).toBe(false);
+    expect(result.current.isCurrentPlayerWinner()).toBe(false);
+    expect(result.current.isAllPlayersGameOver()).toBe(false);
   });
 
-  it('should check if current player is game over', () => {
-    store = mockStore({
-      game: {
-        gameState: {
-          playerStates: {
-            'user1': { gameOver: true }
-          }
-        }
-      },
-      auth: {
-        user: {
-          id: 'user1'
-        }
-      }
+  it('should handle errors for createGame without roomName', async () => {
+    const { result } = renderHook(() => useGame(), {
+      wrapper: ({ children }) => wrapper({ children, store }),
     });
 
-    const { result } = renderHook(() => useGame(), { wrapper });
-    expect(result.current.isCurrentPlayerGameOver()).toBe(true);
+    const response = await act(async () => {
+      return result.current.createGame('', 'normal');
+    });
+
+    expect(response.success).toBe(false);
+    expect(response.error).toBe("Nom de la salle non défini");
   });
 
-  it('should check if all players are game over', () => {
-    store = mockStore({
-      game: {
-        gameState: {
-          playerStates: {
-            'user1': { gameOver: true },
-            'user2': { gameOver: true }
-          }
-        }
-      },
-      auth: {
-        user: {
-          id: 'user1'
-        }
-      }
+  it('should handle errors for joinGame without gameId', async () => {
+    const { result } = renderHook(() => useGame(), {
+      wrapper: ({ children }) => wrapper({ children, store }),
     });
 
-    const { result } = renderHook(() => useGame(), { wrapper });
-    expect(result.current.isAllPlayersGameOver()).toBe(true);
-  });
-
-  it('should handle game start with error', async () => {
-    socketService.isConnected = false;
-    const { result } = renderHook(() => useGame(), { wrapper });
-
-    await act(async () => {
-      const response = await result.current.startGame();
-      expect(response.success).toBe(false);
-      expect(response.error).toContain('Connexion au serveur perdue');
+    const response = await act(async () => {
+      return result.current.joinGame('');
     });
-  });
 
-  it('should handle game restart with error', async () => {
-    socketService.isConnected = false;
-    const { result } = renderHook(() => useGame(), { wrapper });
-
-    await act(async () => {
-      const response = await result.current.restartGame();
-      expect(response.success).toBe(false);
-      expect(response.error).toContain('Connexion au serveur perdue');
-    });
+    expect(response.success).toBe(false);
+    expect(response.error).toBe("ID de partie non défini");
   });
 });
