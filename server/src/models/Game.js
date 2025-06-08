@@ -294,7 +294,7 @@ export class Game {
       player.addLines(linesCleared);
 
       // Si au moins 2 lignes ont été éliminées, appliquer des pénalités aux adversaires
-      if (linesCleared > 0 && this.players.size > 1) {
+      if (linesCleared > 1 && this.players.size > 1) {
         // Nombre de lignes de pénalité = lignes éliminées - 1
         const penaltyLines = Math.max(1, linesCleared - 1);
 

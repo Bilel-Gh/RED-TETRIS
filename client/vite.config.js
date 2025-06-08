@@ -7,9 +7,8 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
-    // This ensures that the history API fallbacks to index.html
-    // which is needed for SPA routing to work properly
-    historyApiFallback: true,
+    host: true, // Permet d'exposer le serveur sur le réseau
+    open: true, // Ouvre automatiquement le navigateur
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
@@ -18,21 +17,24 @@ export default defineConfig({
       }
     }
   },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+  },
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: './src/setupTests.js', // User may need to create/adjust this
+    setupFiles: './src/setupTests.js',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      all: true, // Report coverage for all files specified in include, even if not tested
+      all: true,
       include: ['src/**/*.{js,jsx,ts,tsx}'],
       exclude: [
-        'src/main.jsx', // Often excluded as it's an entry point
-        'src/setupTests.js', // Test setup files
-        'src/**/test?(s).{js,jsx,ts,tsx}', // Test files themselves
-        'src/**/mocks/**/*', // Mocks
-        // Add other patterns like storybook files, type definitions etc. if needed
+        'src/main.jsx',
+        'src/setupTests.js',
+        'src/**/test?(s).{js,jsx,ts,tsx}',
+        'src/**/mocks/**/*',
         'src/**/*.d.ts',
         'src/**/stories/**/*',
         'src/vite-env.d.ts',

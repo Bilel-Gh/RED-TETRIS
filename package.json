@@ -2,7 +2,11 @@
   "scripts": {
     "test": "vitest run",
     "test:coverage": "npx vitest run --coverage",
-    "test:server": "cd server && npm run test:coverage"
+    "test:server": "cd server && npm run test:coverage",
+    "test:client": "cd client && npm run test:coverage",
+    "test:all": "npm run test:server && npm run test:client",
+    "test:coverage:all": "npm run test:server && npm run test:client && node scripts/combineCoverage.js",
+    "test:coverage:summary": "npm run test:server && echo '\\n=== CLIENT COVERAGE ===' && npm run test:client"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
