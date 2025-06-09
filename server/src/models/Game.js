@@ -477,7 +477,6 @@ export class Game {
 
     if (finalGameHasEnded && this.hasJustEnded) {
         this.hasJustEnded = false;
-    } else if (this.hasJustEnded && !finalGameHasEnded) {
     }
 
     return { updatedPlayers, gameHasEnded: finalGameHasEnded };
@@ -523,7 +522,6 @@ export class Game {
           this.winner = winner.id;
           winner.isWinner = true;
 
-          const oldHost = this.host;
           this.host = winner.id;
 
           for (const player of this.players.values()) {

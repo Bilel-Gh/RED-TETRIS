@@ -348,8 +348,6 @@ export class SocketService {
       // --- Actions de jeu ---
 
       // Déplacer la pièce
-// Remplacez votre handler game:move par celui-ci :
-
       socket.on('game:move', (direction, callback) => {
         try {
           const game = this.gameManager.getPlayerGame(socket.id);
