@@ -179,10 +179,10 @@
 
 .tetris-and-next {
   display: flex;
-  flex-direction: column;
   gap: 20px;
   align-items: center;
   width: 100%;
+  justify-content: center;
 }
 
 .next-piece-side-container {

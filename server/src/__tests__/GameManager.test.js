@@ -224,40 +224,38 @@ describe('GameManager', () => {
 
   describe('leaveGame', () => {
     let gameInstance_lg;
-    const hostId_lg = 'hostPlayerLeaveLG'; // Unique host ID for this suite
-    const guestId_lg = 'guestPlayerLeaveLG'; // Unique guest ID
+    const hostId_lg = 'hostPlayerLeaveLG';
+    const guestId_lg = 'guestPlayerLeaveLG';
     const roomName_lg = 'LeaveableRoomLG';
 
     beforeEach(() => {
       gameInstance_lg = gameManager_m.createGame(hostId_lg, 'HostLG', roomName_lg);
       gameManager_m.joinGame(roomName_lg, guestId_lg, 'GuestLG');
-      // Clear method mocks on gameInstance from setup
       if (gameInstance_lg && gameInstance_lg.removePlayer && gameInstance_lg.removePlayer.mockClear) {
         gameInstance_lg.removePlayer.mockClear();
       }
       if (gameInstance_lg && gameInstance_lg.addPlayer && gameInstance_lg.addPlayer.mockClear) {
         gameInstance_lg.addPlayer.mockClear();
       }
-      // Clear calls to the main Game constructor and mockUuidV4_m from the setup calls above
       Game_m.mockClear();
       if (mockUuidV4_m && mockUuidV4_m.mockClear) mockUuidV4_m.mockClear();
     });
 
     it('devrait permettre à un joueur de quitter une partie', () => {
-      const leftGame = gameManager_m.leaveGame(guestId_lg);
-      expect(leftGame).toBe(gameInstance_lg);
+      gameManager_m.leaveGame(guestId_lg);
       expect(gameInstance_lg.removePlayer).toHaveBeenCalledWith(guestId_lg);
       expect(gameManager_m.playerGameMap.has(guestId_lg)).toBe(false);
     });
 
-    it('devrait retourner null si le joueur n\'est pas dans une partie', () => {
-      expect(gameManager_m.leaveGame('nonExistentPlayerIdLG')).toBeNull();
+    it('devrait lever une erreur si le joueur n\'est pas dans une partie', () => {
+      expect(() => {
+        gameManager_m.leaveGame('nonExistentPlayerIdLG');
+      }).toThrow('Le joueur n\'est pas dans une partie');
     });
 
     it('devrait transférer le rôle d\'hôte si l\'hôte quitte et qu\'il reste des joueurs', () => {
-      gameManager_m.leaveGame(hostId_lg); // Host leaves
+      gameManager_m.leaveGame(hostId_lg);
       expect(gameInstance_lg.removePlayer).toHaveBeenCalledWith(hostId_lg);
-      // Mocked Game.removePlayer should handle setting the new host to guestId
       expect(gameInstance_lg.host).toBe(guestId_lg);
       expect(gameManager_m.playerGameMap.has(hostId_lg)).toBe(false);
       expect(gameManager_m.games.get(gameInstance_lg.id)).toBe(gameInstance_lg);
@@ -268,15 +266,6 @@ describe('GameManager', () => {
       const roomSingle_lg = 'roomSingleLG';
       const singlePlayerGame_lg = gameManager_m.createGame(player1_lg_single, 'SingleLG', roomSingle_lg);
       const singlePlayerGameId_lg = singlePlayerGame_lg.id;
-
-      // Clear removePlayer mock on this specific instance if needed, or rely on its current state
-      if (singlePlayerGame_lg.removePlayer && singlePlayerGame_lg.removePlayer.mockClear) {
-        singlePlayerGame_lg.removePlayer.mockClear();
-      }
-      // Simulate this game having only one player after creation for this test logic
-      // The mock addPlayer in createGame already adds player1. We need to ensure no other players are assumed.
-      // Our mock of Game.removePlayer also updates the host. If player1 is host and leaves,
-      // and is the only player, players map becomes empty, host becomes null.
 
       gameManager_m.leaveGame(player1_lg_single);
       expect(singlePlayerGame_lg.removePlayer).toHaveBeenCalledWith(player1_lg_single);

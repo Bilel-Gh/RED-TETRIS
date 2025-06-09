@@ -150,35 +150,23 @@ export class GameManager {
    * @returns {Game|null} La partie quittée ou null si le joueur n'était pas dans une partie
    */
   leaveGame(playerId) {
-    const gameId = this.playerGameMap.get(playerId);
+    const game = this.getPlayerGame(playerId);
 
-    if (!gameId) return null;
+    if (!game) {
+      throw new Error('Le joueur n\'est pas dans une partie');
+    }
 
-    const game = this.games.get(gameId);
+    // Retirer le joueur de la partie
+    game.removePlayer(playerId);
 
-    if (game) {
-      // Retirer le joueur de la partie
-      game.removePlayer(playerId);
-      console.log(`Le joueur ${playerId} a quitté la partie ${game.roomName}`);
-      // Si la partie est vide, la supprimer
-      if (game.players.size === 0) {
-        this.games.delete(gameId);
-        this.roomNameToIdMap.delete(game.roomName);
-        console.log(`Partie ${game.roomName} supprimée car elle est vide`);
-      } else {
-        console.log(`Il reste ${game.players.size} joueurs dans la partie ${game.roomName}`);
-        if (game.players.size === 1) {
-          game.checkGameEnd();
-        }
-      }
+    // Si la partie est vide, la supprimer
+    if (game.players.size === 0) {
+      this.games.delete(game.id);
+      this.roomNameToIdMap.delete(game.roomName);
     }
 
     // Dissocier le joueur de la partie
     this.playerGameMap.delete(playerId);
-    console.log(`Le joueur ${playerId} a été dissocier de la partie`);
-    console.log(`il reste ${this.playerGameMap.size} joueurs dans les parties`);
-
-    return game;
   }
 
   /**
@@ -276,31 +264,17 @@ export class GameManager {
  * @returns {Game} La partie redémarrée
  */
   restartGame(gameId, hostId) {
-    const game = this.games.get(gameId);
+    const game = this.getGame(gameId);
 
     if (!game) {
-      throw new Error(`Partie ${gameId} introuvable`);
+      throw new Error('Partie non trouvée');
     }
 
-    // Vérifier que la partie peut être redémarrée
-    if (!game.canRestart(hostId)) {
-      if (game.host !== hostId) {
-        throw new Error('Seul l\'hôte peut redémarrer la partie');
-      }
-      if (game.isActive) {
-        throw new Error('La partie est encore en cours');
-      }
-      if (game.players.size === 0) {
-        throw new Error('Impossible de redémarrer une partie sans joueurs');
-      }
+    if (game.host !== hostId) {
+      throw new Error('Seul l\'hôte peut redémarrer la partie');
     }
 
-    // Redémarrer la partie
-    game.restart(hostId);
-
-    console.log(`Partie ${game.roomName} redémarrée par l'hôte ${hostId}`);
-
-    return game;
+    return game.restart(hostId);
   }
 }
 

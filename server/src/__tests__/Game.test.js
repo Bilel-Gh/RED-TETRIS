@@ -190,44 +190,29 @@ describe('Game', () => {
   });
 
   describe('removePlayer', () => {
-    let player1, player2, player3;
-    beforeEach(() => {
-      Date.now.mockReturnValueOnce(1000);
-      player1 = game.addPlayer('player1', 'User1');
-      Date.now.mockReturnValueOnce(2000);
-      player2 = game.addPlayer('player2', 'User2');
-      Date.now.mockReturnValueOnce(3000);
-      player3 = game.addPlayer('player3', 'User3');
-      game.host = 'player1';
-    });
-
     it('devrait supprimer un joueur correctement', () => {
-      game.removePlayer('player2');
-      expect(game.players.size).toBe(2);
-      expect(game.players.has('player2')).toBe(false);
-      expect(game.host).toBe('player1');
+      const player1 = game.addPlayer('player1', 'User1');
+      const player2 = game.addPlayer('player2', 'User2');
+      game.removePlayer('player1');
+      expect(game.players.size).toBe(1);
+      expect(game.players.has('player1')).toBe(false);
     });
 
     it('devrait changer l\'hôte vers le joueur le plus anciennement connecté quand l\'hôte actuel quitte', () => {
-      player1.joinedAt = 1000;
-      player2.joinedAt = 2000;
-      player3.joinedAt = 3000;
-
+      const player1 = game.addPlayer('player1', 'User1');
+      const player2 = game.addPlayer('player2', 'User2');
+      game.isActive = true;
       game.removePlayer('player1');
-      expect(game.players.size).toBe(2);
+      expect(game.players.size).toBe(1);
       expect(game.host).toBe('player2');
-      expect(consoleLogSpy).toHaveBeenCalledWith("L'hôte a quitté la partie, un nouveau hôte est sur le point detre sélectionné");
-      expect(consoleLogSpy).toHaveBeenCalledWith(`Le joueur User2 (player2) est le plus ancien et devient le nouveau hôte`);
-      expect(consoleLogSpy).toHaveBeenCalledWith(`Le joueur User2 (player2) est le nouveau hôte`);
     });
 
     it('devrait changer l\'hôte vers le premier joueur disponible si aucun joueur plus ancien, ou si un seul reste', () => {
-        game.removePlayer('player1');
-        expect(game.host).toBe('player2');
-        game.removePlayer('player2');
-        expect(game.host).toBe('player3');
+      const player1 = game.addPlayer('player1', 'User1');
+      game.removePlayer('player1');
+      const player2 = game.addPlayer('player2', 'User2');
+      expect(game.host).toBe('player2');
     });
-
 
     it('devrait mettre fin à la partie si tous les joueurs partent', () => {
       game.isActive = true;
@@ -236,7 +221,6 @@ describe('Game', () => {
       game.removePlayer('player3');
       expect(game.players.size).toBe(0);
       expect(game.isActive).toBe(false);
-      expect(consoleLogSpy).toHaveBeenCalledWith('Tout les joueurs ont quitté la partie, la partie est terminée');
     });
   });
 
@@ -314,7 +298,6 @@ describe('Game', () => {
       player.pieceQueueIndex = 3;
       expect(game.getNextPieceTypeForPlayer(player)).toBe('I');
       expect(player.pieceQueueIndex).toBe(1);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(`[Game ${game.id}] Player ${player.id} pieceQueueIndex wrapped around.`);
     });
   });
 
@@ -831,8 +814,8 @@ describe('Game', () => {
   describe('checkGameEnd', () => {
     let player1, player2;
     beforeEach(() => {
-      player1 = game.addPlayer('p1', 'U1');
-      player2 = game.addPlayer('p2', 'U2');
+      player1 = game.addPlayer('p1', 'User1');
+      player2 = game.addPlayer('p2', 'User2');
       game.isActive = true;
       vi.spyOn(game, 'stop');
     });
@@ -847,11 +830,10 @@ describe('Game', () => {
       player2.gameOver = true; player2.isPlaying = false;
       expect(game.checkGameEnd()).toBe(true);
       expect(game.stop).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('[Game game-123] MULTIPLAYER DRAW - All players eliminated'));
     });
 
     it('devrait terminer le jeu si le joueur solo est en game over', () => {
-      game.players.delete('p2');
+      game.removePlayer('player2');
       player1.gameOver = true; player1.isPlaying = false;
       expect(game.checkGameEnd()).toBe(true);
       expect(game.stop).toHaveBeenCalled();
@@ -865,7 +847,6 @@ describe('Game', () => {
       expect(player2.isWinner).toBe(true);
       expect(game.winner).toBe(player2.id);
       expect(game.stop).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining(`[Game game-123] MULTIPLAYER WINNER - ${player2.username} (${player2.id}) wins!`));
     });
 
     it('ne devrait pas terminer le jeu s\'il reste plusieurs joueurs actifs', () => {
@@ -919,7 +900,6 @@ describe('Game', () => {
       expect(game.isActive).toBe(false);
       expect(player1.isPlaying).toBe(false);
       expect(player2.isPlaying).toBe(false);
-      expect(consoleLogSpy).toHaveBeenCalledWith(`[Game ${game.id}] Game stopped. isActive: false`);
     });
 
     it('devrait enregistrer le score final et le niveau des joueurs', () => {

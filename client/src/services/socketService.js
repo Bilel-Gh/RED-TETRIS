@@ -84,7 +84,6 @@ export const connect = (reduxStore) => {
 
   // Gestion des événements de base
   socket.on('connect', () => {
-    console.log('Connecté au serveur Socket.io avec ID:', socket.id);
     isConnectionInProgress = false;
 
     // Annuler tout timer de reconnexion en cours
@@ -111,7 +110,6 @@ export const connect = (reduxStore) => {
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('Déconnecté du serveur Socket.io, raison:', reason);
     isConnectionInProgress = false;
 
     // Réinitialiser l'état d'authentification du socket
@@ -193,7 +191,6 @@ const setupGameEvents = () => {
 
   // La partie est terminée (défaite)
   socket.on('game:over', (data) => {
-    console.log('****************** Received game:over event:', data);
     store.dispatch(gameOver({
       ...data,
       isWinner: false
@@ -202,7 +199,6 @@ const setupGameEvents = () => {
 
   // La partie est gagnée
   socket.on('game:winner', (data) => {
-    console.log('****************** Received game:winner event:', data);
     store.dispatch(gameWinner({
       ...data,
       isWinner: true
@@ -211,7 +207,6 @@ const setupGameEvents = () => {
 
   // Un joueur spécifique a perdu (game over individuel)
   socket.on('game:player_gameover', (data) => {
-    console.log('****************** Received game:player_gameover event:', data);
     store.dispatch(playerGameOver(data));
   });
 
@@ -224,7 +219,6 @@ const setupGameEvents = () => {
   });
 
   socket.on('game:restarted', (data) => {
-    console.log('Partie redémarrée:', data);
     store.dispatch(gameRestarted({
       gameId: data.gameId,
       roomName: data.roomName,

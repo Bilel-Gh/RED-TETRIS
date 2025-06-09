@@ -50,13 +50,11 @@ export class SocketService {
       (concludedGame) => {
         if (!concludedGame) return;
 
-        console.log(`[Server] Game ${concludedGame.id} concluded. Broadcasting results.`);
         const playersInfo = Array.from(concludedGame.players.values()).map(p => p.getState());
         const endedTimestamp = concludedGame.endedAt || Date.now();
 
         for (const player of concludedGame.players.values()) {
           if (player.id === concludedGame.winner) { // Check if this player is the winner
-            console.log(`[Server] 0 Emitting 'game:winner' to player ${player.id} for game ${concludedGame.id}`);
             this.io.to(player.id).emit('game:winner', {
               gameId: concludedGame.id,
               players: playersInfo,
@@ -65,7 +63,6 @@ export class SocketService {
               endedAt: endedTimestamp
             });
           } else {
-            console.log(`[Server] 0 Emitting 'game:over' to player ${player.id} for game ${concludedGame.id}`);
             this.io.to(player.id).emit('game:over', {
               gameId: concludedGame.id,
               players: playersInfo,
@@ -75,8 +72,6 @@ export class SocketService {
             });
           }
         }
-        // Optionally, also emit a general state update if needed.
-        // this.io.to(concludedGame.id).emit('game:state_updated', concludedGame.getState());
       }
     );
 
@@ -212,12 +207,9 @@ export class SocketService {
           // Si c'est le dernier joueur actif ou si tous les joueurs sont en game over,
           // terminer la partie complètement
           if (activePlayers <= 1 || (isCurrentPlayerGameOver && activePlayers === 0)) {
-            console.log('Dernier joueur actif quitte la partie ou tous les joueurs sont en game over, terminaison de la partie');
             // Marquer la partie comme inactive
             game.isActive = false;
             game.endedAt = Date.now();
-          } else {
-            console.log('un joueur a quitté la partie, il reste des joueurs actifs, la partie continue');
           }
 
           this.gameManager.leaveGame(socket.id);

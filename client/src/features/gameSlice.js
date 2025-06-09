@@ -133,7 +133,6 @@ export const gameSlice = createSlice({
           state.currentGame.isActive = newGameState.isActive;
         }
         if (newGameState.host && newGameState.host !== state.currentGame.host) {
-          console.log('updateGameState: Updating host from', state.currentGame.host, 'to', newGameState.host);
           state.currentGame.host = newGameState.host;
         }
       }
@@ -214,8 +213,6 @@ export const gameSlice = createSlice({
           });
         }
       }
-      console.log('================ gameOver state after update:', state.gameState?.isActive);
-      console.log('🔴 gameOver state after update:', state.gameState?.isActive, 'host:', state.currentGame?.host);
     },
     gameWinner: (state, action) => {
       // Mettre à jour les informations de fin de jeu en cas de victoire
@@ -228,7 +225,6 @@ export const gameSlice = createSlice({
           state.currentGame.isActive = false;
           if (action.payload.host) {
             state.currentGame.host = action.payload.host;
-            console.log('🏆 Updated host to:', action.payload.host);
           }
         }
 
@@ -258,8 +254,6 @@ export const gameSlice = createSlice({
           });
         }
       }
-      console.log('================ gameWinner state after update:', state.gameState?.isActive);
-      console.log('🏆 gameWinner state after update:', state.gameState?.isActive, 'host:', state.currentGame?.host);
     },
     penaltyApplied: (state, action) => {
       // Informations sur la pénalité
@@ -407,8 +401,6 @@ export const gameSlice = createSlice({
 
       state.status = 'succeeded';
       state.error = null;
-
-      console.log('Game restarted, ready for new start');
     },
   }
 });
